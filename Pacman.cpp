@@ -5,6 +5,9 @@
 #include <box2d/box2d.h>
 
 #include "lib/box2d/src/body.h"
+
+
+
 using namespace std;
 #include "bagel.h"
 using namespace bagel;
@@ -20,67 +23,73 @@ namespace pacman
     /**
      * @brief Handles movement logic for entities with Position, Direction, and Speed.
      */
-    class MovementSystem
-    {
-    public:
-        void update() {
-            for (int i = 0; i < _entities.size(); ++i) {
-                ent_type e = _entities[i];
-                if (!World::mask(e).test(mask)) {
-                    _entities[i] = _entities[_entities.size()-1];
-                    _entities.pop();
-                    --i;
-                    continue;
-                }else {
-                    auto& c = World::getComponent<Collider>(e);
-                    auto& i = World::getComponent<Intent>(e);
-
-                    const float y = i.up ? -30 : i.down ? 30 : 0;
-                    const float x = i.left ? -30 : i.right ? 30 : 0;
-                    b2Body_SetLinearVelocity(c.b, {x,y});
-                }
-            }
-        }
-        void updateEntities() {
-            for (int i = 0; i < World::sizeAdded(); ++i) {
-                const AddedMask& am = World::getAdded(i);
-
-                if ((!am.prev.test(mask)) && (am.next.test(mask))) {
-                    _entities.push(am.e);
-                }
-            }
-        }
-
-        MovementSystem()
-        {
-            for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-                if (World::mask(e).test(mask)) {
-                    _entities.push(e);
-                }
-            }
-        }
-    private:
-        Bag<ent_type,100> _entities;
-
-        static const inline Mask mask = MaskBuilder()
-            .set<Intent>()
-            .set<Collider>
-            .build();
-    };
-
-    // void PacMan::MovementSystem() {
-    //     Mask required = MaskBuilder()
-    //         .set<Position>()
-    //         .set<Direction>()
-    //         .set<Speed>()
-    //         .build();
-    //     for (id_type id = 0; id <= World::maxId().id; ++id) {
-    //         ent_type e{id};
-    //         if (World::mask(e).test(required)) {
-    //             bool hasIntent = World::mask(e).test(Component<Intent>::Bit);
+    // class MovementSystem
+    // {
+    // public:
+    //     void update() {
+    //         for (int i = 0; i < _entities.size(); ++i) {
+    //             ent_type e = _entities[i];
+    //             if (!World::mask(e).test(mask)) {
+    //                 _entities[i] = _entities[_entities.size()-1];
+    //                 _entities.pop();
+    //                 --i;
+    //                 continue;
+    //             }else {
+    //                 auto& c = World::getComponent<Collider>(e);
+    //                 auto& i = World::getComponent<Intent>(e);
+    //
+    //                 const float y = i.up ? -30 : i.down ? 30 : 0;
+    //                 const float x = i.left ? -30 : i.right ? 30 : 0;
+    //                 b2Body_SetLinearVelocity(c.b, {x,y});
+    //             }
     //         }
     //     }
-    // }
+    //     void updateEntities() {
+    //         for (int i = 0; i < World::sizeAdded(); ++i) {
+    //             const AddedMask& am = World::getAdded(i);
+    //
+    //             if ((!am.prev.test(mask)) && (am.next.test(mask))) {
+    //                 _entities.push(am.e);
+    //             }
+    //         }
+    //     }
+    //
+    //     MovementSystem()
+    //     {
+    //         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
+    //             if (World::mask(e).test(mask)) {
+    //                 _entities.push(e);
+    //             }
+    //         }
+    //     }
+    // private:
+    //     Bag<ent_type,100> _entities;
+    //
+    //     static const inline Mask mask = MaskBuilder()
+    //         .set<Intent>()
+    //         .set<Collider>()
+    //         .build();
+    // };
+
+    void PacMan::MovementSystem()
+    {
+        static const Mask mask = MaskBuilder()
+            .set<Intent>()
+            .set<Collider>()
+            .build();
+
+        for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
+            if (World::mask(e).test(mask)) {
+                const auto& i = World::getComponent<Intent>(e);
+                const auto& c = World::getComponent<Collider>(e);
+
+                const float y = i.up ? -30 : i.down ? 30 : 0;
+                const float x = i.left ? -30 : i.right ? 30 : 0;
+
+                b2Body_SetLinearVelocity(c.b, {x,y});
+            }
+        }
+    }
 
     /**
      * @brief Processes user input for entities that are player-controlled.
@@ -179,9 +188,9 @@ namespace pacman
                     // Loop over walls to check for contacts
                     for (int j = 0; j < _walls.size(); ++j) {
                         ent_type wall = _walls[j];
-                        auto& wallBody = World::getComponent<Position>(wall);
+                        auto& wallBody = World::getComponent<Collider>(wall);
 
-                        if (checkBox2DCollision(e, wallBody)) {
+                        if (checkBox2DCollision(c.b, wallBody.b)) {
                             if (isGhost) {
                                 redirectGhostRandomly(e);
                             } else if (isPlayer) {
@@ -231,7 +240,7 @@ namespace pacman
                 .set<Collider>()
                 .set<Wall>()
                 .build();
-            bool checkBox2DCollision(ent_type e, ent_type wall) {
+            bool checkBox2DCollision(b2BodyId e, b2BodyId wall) {
 
             }
             void redirectGhostRandomly(ent_type) {
@@ -247,12 +256,12 @@ namespace pacman
             .build();
         for (id_type id = 0; id <= World::maxId().id; ++id) {
             ent_type e{id};
-            if (World::mask(e).test(required)) {
-                bool isEatable = World::mask(e).test(Component<Eatable>::Bit);
-                bool isPellet = World::mask(e).test(Component<Pellet>::Bit);
-                bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
-                bool isWall = World::mask(e).test(Component<Wall>::Bit);
+            if (!World::mask(e).test(required)) {
+                continue;
             }
+            bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
+            bool isWall = World::mask(e).test(Component<Wall>::Bit);
+            bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
         }
     }
 
