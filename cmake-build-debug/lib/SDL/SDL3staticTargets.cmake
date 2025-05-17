@@ -60,7 +60,7 @@ set_target_properties(SDL3::SDL3-static PROPERTIES
 # Import target "SDL3::SDL3-static" for configuration "Debug"
 set_property(TARGET SDL3::SDL3-static APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(SDL3::SDL3-static PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_DEBUG "C"
+  IMPORTED_LINK_INTERFACE_LANGUAGES_DEBUG "C;CXX"
   IMPORTED_LOCATION_DEBUG "C:/Users/Noam/OneDrive - The Academic College of Tel-Aviv Jaffa - MTA/Documents/Third year/Excellence/Pacman/cmake-build-debug/lib/SDL/libSDL3.a"
   )
 

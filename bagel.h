@@ -322,7 +322,7 @@ namespace bagel
 		static void step() { _added.clear(); }
 	private:
 		static inline StorageCallbacks _callbacks[Params.MaxComponents] = {nullptr};
-		static inline Bag<AddedMask,Params.IdBagSize>		_added;
+		static inline Bag<AddedMask,100>		_added;
 
 		static inline ent_type								_maxId{-1};
 		static inline Bag<Mask,		Params.InitialEntities> _masks;

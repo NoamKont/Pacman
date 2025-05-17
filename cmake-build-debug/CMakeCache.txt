@@ -17,6 +17,12 @@
 //Enable AVX2
 BOX2D_AVX2:BOOL=OFF
 
+//Compile warnings as errors
+BOX2D_COMPILE_WARNING_AS_ERROR:BOOL=OFF
+
+//Disable SIMD math (slower)
+BOX2D_DISABLE_SIMD:BOOL=OFF
+
 //Enable SIMD math (faster)
 BOX2D_ENABLE_SIMD:BOOL=ON
 

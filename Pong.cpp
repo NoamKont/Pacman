@@ -145,6 +145,9 @@ namespace pong
 	{
 	public:
 		void update() {
+			SDL_PumpEvents();
+			const bool* keys = SDL_GetKeyboardState(nullptr);
+
 			for (int i = 0; i < _entities.size(); ++i) {
 				ent_type e = _entities[i];
 				if (!World::mask(e).test(mask)) {
@@ -152,6 +155,12 @@ namespace pong
 					_entities.pop();
 					--i;
 					continue;
+				}else {
+					const auto& k = World::getComponent<Keys>(e);
+					auto& i = World::getComponent<Intent>(e);
+
+					i.up = keys[k.up];
+					i.down = keys[k.down];
 				}
 			}
 		}

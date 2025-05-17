@@ -12,6 +12,8 @@ add_executable(Pacman main.cpp
         bagel_cfg.h
         Pong.cpp
         Pong.h
+        Pacman.cpp
+        Pacman.h
 )
 
 set(SDL_STATIC ON)
