@@ -1,13 +1,13 @@
 # ninja log v6
+6718	6971	7691851437966468	lib/SDL/CMakeFiles/SDL3-static.dir/src/events/SDL_pen.c.obj	6c63af99c0e7f07d
+4672	4898	7691851417506596	lib/SDL/CMakeFiles/SDL3-static.dir/src/SDL_error.c.obj	a4e6f2a9db5a16b8
+10824	10991	7691851479032327	lib/SDL/CMakeFiles/SDL3-static.dir/src/render/ps2/SDL_render_ps2.c.obj	c89aabb789b96eac
 63	971	7691851371405729	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/e_fmod.c.obj	62b7fe5ea0696333
 22196	22624	7691851592747075	lib/SDL/CMakeFiles/SDL3-static.dir/src/timer/windows/SDL_systimer.c.obj	101ffa012dfe9bb6
-6718	6971	7691851437966468	lib/SDL/CMakeFiles/SDL3-static.dir/src/events/SDL_pen.c.obj	6c63af99c0e7f07d
-10824	10991	7691851479032327	lib/SDL/CMakeFiles/SDL3-static.dir/src/render/ps2/SDL_render_ps2.c.obj	c89aabb789b96eac
-4672	4898	7691851417506596	lib/SDL/CMakeFiles/SDL3-static.dir/src/SDL_error.c.obj	a4e6f2a9db5a16b8
-1880	2828	7691851389596073	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/k_cos.c.obj	37efa7dfe39e2688
 13735	14117	7691851508142503	lib/SDL/CMakeFiles/SDL3-static.dir/src/video/SDL_pixels.c.obj	da81c9873fe35542
-1915	2762	7691851389936458	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/k_sin.c.obj	a2cf7129dfab8158
+1880	2828	7691851389596073	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/k_cos.c.obj	37efa7dfe39e2688
 5766	6458	7691851428452563	lib/SDL/CMakeFiles/SDL3-static.dir/src/camera/SDL_camera.c.obj	8efa0d7008a6a006
+1915	2762	7691851389936458	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/k_sin.c.obj	a2cf7129dfab8158
 13290	13621	7691851503685917	lib/SDL/CMakeFiles/SDL3-static.dir/src/video/SDL_blit_slow.c.obj	6258459dd4895ca8
 12074	12259	7691851491531620	lib/SDL/CMakeFiles/SDL3-static.dir/src/stdlib/SDL_memmove.c.obj	3a2fe14ce92b18a2
 69	964	7691851371474672	lib/SDL/CMakeFiles/SDL_uclibc.dir/src/libm/e_log.c.obj	4530977dc629fa09

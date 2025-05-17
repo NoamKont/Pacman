@@ -153,7 +153,7 @@ namespace pacman{
 
         bool valid();
 
-        void InputSystem();
+        //void InputSystem();
         void DecisionSystem();
         void MovementSystem();
         void CollisionSystem();

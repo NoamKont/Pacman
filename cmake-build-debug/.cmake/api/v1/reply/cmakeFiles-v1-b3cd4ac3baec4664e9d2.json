@@ -483,7 +483,7 @@
 			"path" : "C:/Program Files/JetBrains/CLion 2025.1/bin/cmake/win/x64/share/cmake-3.31/Modules/FindPackageMessage.cmake"
 		},
 		{
-			"path" : "lib/SDL/.git/HEAD"
+			"path" : ".git/HEAD"
 		},
 		{
 			"path" : "lib/SDL/cmake/GetGitRevisionDescription.cmake.in"
@@ -493,7 +493,7 @@
 			"path" : "cmake-build-debug/lib/SDL/CMakeFiles/git-data/grabRef.cmake"
 		},
 		{
-			"path" : "lib/SDL/.git/refs/heads/main"
+			"path" : ".git/refs/heads/Noam-dev"
 		},
 		{
 			"path" : "lib/SDL/include/build_config/SDL_revision.h.cmake"

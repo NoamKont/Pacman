@@ -16,7 +16,7 @@ CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
 -- Platform: Windows-10.0.26100
 -- 64-bit:   TRUE
 -- Compiler: C:/Program Files/JetBrains/CLion 2025.1/bin/mingw/bin/gcc.exe
--- Revision: SDL3-3.3.0-release-3.2.6-536-g514d96de0
+-- Revision: SDL3-3.3.0-00a17fe
 -- Vendor:   
 -- 
 -- Subsystems:
@@ -149,6 +149,6 @@ CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
 -- CMake system name: Windows
 -- CMake host system processor: AMD64
 -- Box2D on MinGW
--- Configuring done (1.0s)
+-- Configuring done (1.3s)
 -- Generating done (0.3s)
 -- Build files have been written to: C:/Users/Noam/OneDrive - The Academic College of Tel-Aviv Jaffa - MTA/Documents/Third year/Excellence/Pacman/cmake-build-debug
