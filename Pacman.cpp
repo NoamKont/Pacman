@@ -54,14 +54,18 @@ namespace pacman
             SDL_PumpEvents();
             const bool* keys = SDL_GetKeyboardState(nullptr);
 
-            for (int i = 0; i < _entities.size(); ++i) {
+            for (int i = 0; i < _entities.size(); ++i)
+            {
                 ent_type e = _entities[i];
-                if (!World::mask(e).test(mask)) {
+                if (!World::mask(e).test(mask))
+                {
                     _entities[i] = _entities[_entities.size()-1];
                     _entities.pop();
                     --i;
                     continue;
-                }else {
+                }
+                else
+                {
                     const auto& k = World::getComponent<Input>(e);
                     auto& i = World::getComponent<Intent>(e);
                     if (keys[k.up] || keys[k.down] || keys[k.left] || keys[k.right]) {
@@ -140,19 +144,124 @@ namespace pacman
      * @brief Detects and handles collisions between entities.
      */
     //TODO
-    void PacMan::CollisionSystem() {
+    void PacMan::CollisionSystem()
+    {
         Mask required = MaskBuilder()
             .set<Position>()
             .set<Collider>()
             .build();
-        for (id_type id = 0; id <= World::maxId().id; ++id) {
-            ent_type e{id};
-            if (!World::mask(e).test(required)) {
+
+        for (id_type id1 = 0; id1 <= World::maxId().id; ++id1)
+        {
+            ent_type e1{id1};
+            if (!World::mask(e1).test(required)) {
                 continue;
             }
-            bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
-            bool isWall = World::mask(e).test(Component<Wall>::Bit);
-            bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
+
+            const auto& pos1 = World::getComponent<Position>(e1);
+            const auto& col1 = World::getComponent<Collider>(e1);
+
+            b2Transform t1 = b2Body_GetTransform(col1.b);
+            SDL_FRect rect1 = {
+                    t1.p.x * BOX_SCALE, t1.p.y * BOX_SCALE,
+                    16, 16  // Assuming tile size. Adjust if needed per entity.
+            };
+
+            for (id_type id2 = id1 + 1; id2 <= World::maxId().id; ++id2) {
+                ent_type e2{id2};
+                if (!World::mask(e2).test(required))
+                    continue;
+
+                const auto &pos2 = World::getComponent<Position>(e2);
+                const auto &col2 = World::getComponent<Collider>(e2);
+
+                b2Transform t2 = b2Body_GetTransform(col2.b);
+                SDL_FRect rect2 = {
+                        t2.p.x * BOX_SCALE, t2.p.y * BOX_SCALE,
+                        16, 16
+                };
+
+                if (!SDL_HasRectIntersectionFloat(&rect1, &rect2))
+                    continue;
+
+                ///Check who intersect with who
+                bool isPlayer1 = World::mask(e1).test(Component<PlayerControlled>::Bit);
+                bool isPlayer2 = World::mask(e2).test(Component<PlayerControlled>::Bit);
+                bool isGhost1 = World::mask(e1).test(Component<Ghost>::Bit);
+                bool isGhost2 = World::mask(e2).test(Component<Ghost>::Bit);
+
+                /// Player hit ghost - reduce life
+                if ((isGhost1 && isPlayer2) || (isGhost2 && isPlayer1)) {
+                    ent_type player = isPlayer1 ? e1 : e2;
+
+                    if (World::mask(player).test(Component<PlayerStats>::Bit)) {
+                        auto& stats = World::getComponent<PlayerStats>(player);
+                        stats.lives -= 1;
+                        std::cout << "Player hit by ghost! Lives left: " << stats.lives << "\n";
+                    }
+                }
+
+                bool isWall1 = World::mask(e1).test(Component<Wall>::Bit);
+                bool isWall2 = World::mask(e2).test(Component<Wall>::Bit);
+
+                /// Handle wall collisions – stop movement or bounce back
+                if ((isWall1 && (isPlayer2 || isGhost2)) || (isWall2 && (isPlayer1 || isGhost1))) {
+                    ent_type entity = (isWall1 ? e2 : e1);
+
+                    if (World::mask(entity).test(Component<Direction>::Bit)) {
+                        auto& dir = World::getComponent<Direction>(entity);
+                        ///Add a bounce back here
+                    }
+
+                    if (World::mask(entity).test(Component<Speed>::Bit)) {
+                        auto& speed = World::getComponent<Speed>(entity);
+                        speed.value = 0;
+                    }
+                }
+
+                /// Handle pellet collisions - increase score/power up
+                bool isPellet1 = World::mask(e1).test(Component<Pellet>::Bit);
+                bool isPellet2 = World::mask(e2).test(Component<Pellet>::Bit);
+
+                if ((isPlayer1 && isPellet2) || (isPlayer2 && isPellet1)) {
+                    ent_type pellet = isPellet1 ? e1 : e2;
+                    ent_type player = isPlayer1 ? e1 : e2;
+
+                    ///Score handling
+                    if (World::mask(player).test(Component<PlayerStats>::Bit)) {
+                        auto& stats = World::getComponent<PlayerStats>(player);
+                        const auto& pelletData = World::getComponent<Pellet>(pellet);
+
+                        if (pelletData.type == ePelletState::Normal) {
+                            stats.score += 10;
+                        } else if (pelletData.type == ePelletState::Power) {
+                            stats.score += 50;
+                            // TODO: Set ghosts to vulnerable state (if implemented)
+                        }
+                    }
+
+                    World::destroyEntity(pellet);
+                }
+
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+//            SDL_FRect r1 = World::getComponent<Collider>(e1).rect;
+//
+//
+//            bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
+//            bool isWall = World::mask(e).test(Component<Wall>::Bit);
+//            bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
         }
     }
 
