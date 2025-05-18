@@ -117,7 +117,7 @@ namespace pacman{
     /**
      * @brief Tag component for entities that can be eaten (e.g., pellets, ghosts in vulnerable state).
      */
-    struct Eatable { };
+    struct Eatable { }; ///Is it necessary? every pallete is eatable so why the tag
 
     /**
      * @brief Tag component for wall entities.
