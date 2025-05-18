@@ -14,16 +14,6 @@ using namespace bagel;
 namespace pacman{
 
     /**
-     * @brief Represents the current animation state of an entity.
-     */
-    enum class eAnimationState {
-        Idle,      ///< No movement or activity
-        Moving,    ///< Entity is moving
-        Eating,    ///< Entity is eating (used for Pac-Man)
-        Dead       ///< Entity has died
-    };
-
-    /**
      * @brief Represents the type of pellet.
      */
     enum class ePelletState {
@@ -31,16 +21,8 @@ namespace pacman{
         Power      ///< Power-up pellet (enables Pac-Man to eat ghosts)
     };
 
-    /**
-     * @brief Represents an action the player or AI wants to take.
-     */
-    enum class eAction {
-        None,
-        MoveUp,
-        MoveDown,
-        MoveLeft,
-        MoveRight
-    };
+
+
 
     /**
      * @brief Component representing an entity's position on the grid.
@@ -69,7 +51,7 @@ namespace pacman{
     /**
      * @brief Component representing sprite animation state for rendering.
      */
-    using Drawable = struct { SDL_FRect part; SDL_FPoint size; };
+    using Drawable = struct { SDL_FRect part[2]; SDL_FPoint size; size_t frame; };
 
     // struct Sprite {
     //     eAnimationState state = eAnimationState::Idle;
@@ -161,17 +143,16 @@ namespace pacman{
         void RenderSystem();
         void ScoreSystem();
 
-        Entity createPacMan();
+        void createPacMan();
+        void createGhost(const SDL_FRect& r1, const SDL_FRect& r2, const SDL_FPoint& p);
 
-        Entity createGhost();
+        void createPellet(SDL_FPoint p);
 
-        Entity createPellet(SDL_FPoint p);
+        void createScore(Position pos);
 
-        Entity createScore(Position pos);
+        void createWall(SDL_FPoint p);
 
-        Entity createWall(SDL_FPoint p);
-
-        Entity createBackground(Position pos);
+        void createBackground(Position pos);
 
         bool prepareWindowAndTexture();
         void prepareBoxWorld();
@@ -185,13 +166,65 @@ namespace pacman{
         static constexpr float	RAD_TO_DEG = 57.2958f;
 
         static constexpr float	BOX_SCALE = 10;
-        static constexpr float	BALL_TEX_SCALE = 0.5f;
+        static constexpr float	PELLET_SCALE = 5.f;
+        static constexpr float	CHARACTER_TEX_SCALE = 5.f;
         static constexpr float	PAD_TEX_SCALE = 0.25f;
 
-        static constexpr SDL_FRect BALL_TEX = {404, 580, 76, 76};
-        static constexpr SDL_FRect PAD1_TEX = {360, 4, 64, 532};
-        static constexpr SDL_FRect PAD2_TEX = {456, 4, 64, 532};
-        static constexpr SDL_FRect DOTS_TEX = {296, 20, 24, 24};
+    	static constexpr SDL_FRect BOARD{ 0, 0, 226, 247 };
+
+    	static constexpr SDL_FRect PELLET{ 19, 11, 2, 2 };
+    	static constexpr SDL_FRect POWER_PELLET{ 7, 23, 9,9  };
+
+		static constexpr SDL_FRect OPEN_PACMAN{ 456, 0, 13, 14 };
+		static constexpr SDL_FRect CLOSE_PACMAN{ 472, 0, 13, 14 };
+
+		static constexpr SDL_FRect RED_GHOST_RIGHT{ 457, 65, 14, 15 };
+		static constexpr SDL_FRect RED_GHOST_RIGHT_1{ 473, 65, 14, 15 };
+
+		static constexpr SDL_FRect RED_GHOST_LEFT{ 489, 65, 14, 15 };
+		static constexpr SDL_FRect RED_GHOST_LEFT_1{ 505, 65, 14, 15 };
+
+		static constexpr SDL_FRect RED_GHOST_UP{ 521, 65, 14, 15 };
+		static constexpr SDL_FRect RED_GHOST_UP_1{ 537, 65, 14, 15 };
+
+		static constexpr SDL_FRect RED_GHOST_DDOWN{ 553, 65, 14, 15 };
+		static constexpr SDL_FRect RED_GHOST_DOWN_1{ 569, 65, 14, 15 };
+
+		static constexpr SDL_FRect PINK_GHOST_RIGHT{ 457, 81, 14, 15 };
+		static constexpr SDL_FRect PINK_GHOST_RIGHT_1{ 473, 81, 14, 15 };
+
+		static constexpr SDL_FRect PINK_GHOST_LEFT{ 489, 81, 14, 15 };
+		static constexpr SDL_FRect PINK_GHOST_LEFT_1{ 505, 81, 14, 15 };
+
+		static constexpr SDL_FRect PINK_GHOST_UP{ 521, 81, 14, 15 };
+		static constexpr SDL_FRect PINK_GHOST_UP_1{ 537, 81, 14, 15 };
+
+		static constexpr SDL_FRect PINK_GHOST_DDOWN{ 553, 81, 14, 15 };
+		static constexpr SDL_FRect PINK_GHOST_DOWN_1{ 569, 81, 14, 15 };
+
+		static constexpr SDL_FRect BLUE_GHOST_RIGHT{ 457,97 , 14, 15 };
+		static constexpr SDL_FRect BLUE_GHOST_RIGHT_1{ 473, 97, 14, 15 };
+
+		static constexpr SDL_FRect BLUE_GHOST_LEFT{ 489, 97, 14, 15 };
+		static constexpr SDL_FRect BLUE_GHOST_LEFT_1{ 505, 97, 14, 15 };
+
+		static constexpr SDL_FRect BLUE_GHOST_UP{ 521, 97, 14, 15 };
+		static constexpr SDL_FRect BLUE_GHOST_UP_1{ 537, 97, 14, 15 };
+
+		static constexpr SDL_FRect BLUE_GHOST_DDOWN{ 553, 97, 14, 15 };
+		static constexpr SDL_FRect BLUE_GHOST_DOWN_1{ 569, 97, 14, 15 };
+
+		static constexpr SDL_FRect ORANGE_GHOST_RIGHT{ 457,113, 14, 15 };
+		static constexpr SDL_FRect ORANGE_GHOST_RIGHT_1{ 473, 113, 14, 15 };
+
+		static constexpr SDL_FRect ORANGE_GHOST_LEFT{ 489, 113, 14, 15 };
+		static constexpr SDL_FRect ORANGE_GHOST_LEFT_1{ 505, 113, 14, 15 };
+
+		static constexpr SDL_FRect ORANGE_GHOST_UP{ 521, 113, 14, 15 };
+		static constexpr SDL_FRect ORANGE_GHOST_UP_1{ 537, 113, 14, 15 };
+
+		static constexpr SDL_FRect ORANGE_GHOST_DDOWN{ 553, 113, 14, 15 };
+		static constexpr SDL_FRect ORANGE_GHOST_DOWN_1{ 569, 113, 14, 15 };
 
         SDL_Texture* tex;
         SDL_Renderer* ren;

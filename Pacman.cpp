@@ -23,54 +23,6 @@ namespace pacman
     /**
      * @brief Handles movement logic for entities with Position, Direction, and Speed.
      */
-    // class MovementSystem
-    // {
-    // public:
-    //     void update() {
-    //         for (int i = 0; i < _entities.size(); ++i) {
-    //             ent_type e = _entities[i];
-    //             if (!World::mask(e).test(mask)) {
-    //                 _entities[i] = _entities[_entities.size()-1];
-    //                 _entities.pop();
-    //                 --i;
-    //                 continue;
-    //             }else {
-    //                 auto& c = World::getComponent<Collider>(e);
-    //                 auto& i = World::getComponent<Intent>(e);
-    //
-    //                 const float y = i.up ? -30 : i.down ? 30 : 0;
-    //                 const float x = i.left ? -30 : i.right ? 30 : 0;
-    //                 b2Body_SetLinearVelocity(c.b, {x,y});
-    //             }
-    //         }
-    //     }
-    //     void updateEntities() {
-    //         for (int i = 0; i < World::sizeAdded(); ++i) {
-    //             const AddedMask& am = World::getAdded(i);
-    //
-    //             if ((!am.prev.test(mask)) && (am.next.test(mask))) {
-    //                 _entities.push(am.e);
-    //             }
-    //         }
-    //     }
-    //
-    //     MovementSystem()
-    //     {
-    //         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-    //             if (World::mask(e).test(mask)) {
-    //                 _entities.push(e);
-    //             }
-    //         }
-    //     }
-    // private:
-    //     Bag<ent_type,100> _entities;
-    //
-    //     static const inline Mask mask = MaskBuilder()
-    //         .set<Intent>()
-    //         .set<Collider>()
-    //         .build();
-    // };
-
     void PacMan::MovementSystem()
     {
         static const Mask mask = MaskBuilder()
@@ -94,6 +46,7 @@ namespace pacman
     /**
      * @brief Processes user input for entities that are player-controlled.
      */
+
     class InputSystem
     {
     public:
@@ -111,16 +64,17 @@ namespace pacman
                 }else {
                     const auto& k = World::getComponent<Input>(e);
                     auto& i = World::getComponent<Intent>(e);
-
-
-                    i.up = keys[k.up];
-                    i.down = keys[k.down];
-                    i.left = keys[k.left];
-                    i.right = keys[k.right];
+                    if (keys[k.up] || keys[k.down] || keys[k.left] || keys[k.right]) {
+                        i.up = keys[k.up];
+                        i.down = keys[k.down];
+                        i.left = keys[k.left];
+                        i.right = keys[k.right];
+                    }
                 }
             }
         }
-        void updateEntities() {
+
+        void updateEntities(){
             for (int i = 0; i < World::sizeAdded(); ++i) {
                 const AddedMask& am = World::getAdded(i);
 
@@ -140,7 +94,6 @@ namespace pacman
         }
     private:
         Bag<ent_type,100> _entities;
-
         static const inline Mask mask = MaskBuilder()
             .set<Input>()
             .set<Intent>()
@@ -148,107 +101,45 @@ namespace pacman
             .build();
     };
 
+    /**
+     * @brief Prepares rendering data for entities with sprites and positions.
+     */
+    void PacMan::RenderSystem() {
+        static const Mask mask = MaskBuilder()
+                .set<Position>()
+                .set<Drawable>()
+                .build();
 
-    // void PacMan::InputSystem(){
-    //     Mask required = MaskBuilder()
-    //         .set<Input>()
-    //         .set<PlayerControlled>()
-    //         .build();
-    //     for (id_type id = 0; id <= World::maxId().id; ++id) {
-    //         ent_type e{id};
-    //         if (World::mask(e).test(required)) {
-    //             bool hasIntent = World::mask(e).test(Component<Intent>::Bit);
-    //         }
-    //     }
-    // }
+        SDL_RenderClear(ren);
+
+        for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
+            if (World::mask(e).test(mask)) {
+                const auto& t = World::getComponent<Position>(e);
+                auto& d = World::getComponent<Drawable>(e);
+                bool ball = World::mask(e).test(Component<PlayerControlled>::Bit);
+                if (ball) {
+                    d.frame++;
+                    if (d.frame == 100)
+                        d.frame = 0;
+                }
+                const SDL_FRect dst = {
+                    t.p.x-d.size.x/2,
+                    t.p.y-d.size.y/2,
+                    d.size.x, d.size.y};
+
+                SDL_RenderTextureRotated(
+                    ren, tex, &d.part[(d.frame / 10) % 2], &dst, t.a,
+                    nullptr, SDL_FLIP_NONE);
+            }
+        }
+
+        SDL_RenderPresent(ren);
+    }
 
     /**
      * @brief Detects and handles collisions between entities.
      */
-    class CollisionSystem
-    {
-        public:
-            void update() {
-                for (int i = 0; i < _entities.size(); ++i) {
-                    ent_type e = _entities[i];
-
-                    if (!World::mask(e).test(mask)) {
-                        _entities[i] = _entities[_entities.size() - 1];
-                        _entities.pop();
-                        --i;
-                        continue;
-                    }
-                    auto &p = World::getComponent<Position>(e);
-                    auto &c = World::getComponent<Collider>(e);
-                    bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
-                    bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
-
-
-
-                    // Loop over walls to check for contacts
-                    for (int j = 0; j < _walls.size(); ++j) {
-                        ent_type wall = _walls[j];
-                        auto& wallBody = World::getComponent<Collider>(wall);
-
-                        if (checkBox2DCollision(c.b, wallBody.b)) {
-                            if (isGhost) {
-                                redirectGhostRandomly(e);
-                            } else if (isPlayer) {
-                                // Stop Pac-Man
-                                b2Body_SetLinearVelocity(c.b, {0,0});
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
-
-            void updateEntities() {
-                for (int i = 0; i < World::sizeAdded(); ++i) {
-                    const AddedMask& am = World::getAdded(i);
-
-                    if ((!am.prev.test(mask)) && (am.next.test(mask))) {
-                        _entities.push(am.e);
-                    }
-                }
-            }
-
-            CollisionSystem() {
-                for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-                    if (World::mask(e).test(mask)) {
-                        _entities.push(e);
-                    }
-                    if (World::mask(e).test(wallMask)) {
-                        _walls.push(e);
-                    }
-                }
-            }
-
-        private:
-            Bag<ent_type, 100> _entities;
-            Bag<ent_type, 100> _walls;
-
-            static const inline Mask mask = MaskBuilder()
-                .set<Collider>()
-                .set<Position>()
-                .build();
-
-            static const inline Mask wallMask = MaskBuilder()
-                .set<Position>()
-                .set<Drawable>()
-                .set<Collider>()
-                .set<Wall>()
-                .build();
-            bool checkBox2DCollision(b2BodyId e, b2BodyId wall) {
-
-            }
-            void redirectGhostRandomly(ent_type) {
-
-            }
-    };
-
-
+    //TODO
     void PacMan::CollisionSystem() {
         Mask required = MaskBuilder()
             .set<Position>()
@@ -268,6 +159,7 @@ namespace pacman
     /**
      * @brief Updates pellet-related logic such as state changes or consumption.
      */
+    //TODO - Check if needed and how to use
     void PacMan::PelletSystem() {
         Mask required = MaskBuilder()
             .set<Pellet>()
@@ -282,24 +174,9 @@ namespace pacman
     }
 
     /**
-     * @brief Prepares rendering data for entities with sprites and positions.
-     */
-    void PacMan::RenderSystem() {
-        Mask required = MaskBuilder()
-            .set<Position>()
-            .set<Drawable>()
-            .build();
-        for (id_type id = 0; id <= World::maxId().id; ++id) {
-            ent_type e{id};
-            if (World::mask(e).test(required)) {
-                bool hasPowerUP = World::mask(e).test(Component<Pellet>::Bit);
-            }
-        }
-    }
-
-    /**
      * @brief Handles AI and player decision-making logic.
      */
+    //TODO - Check if needed for ghosts
     void PacMan::DecisionSystem() {
         Mask required = MaskBuilder()
             .set<Position>()
@@ -317,6 +194,7 @@ namespace pacman
     /**
      * @brief Updates and tracks player scores.
      */
+    //TODO
     void PacMan::ScoreSystem() {
         Mask required = MaskBuilder()
             .set<PlayerStats>()
@@ -335,12 +213,25 @@ namespace pacman
      * @param pos The starting position of Pac-Man.
      * @return The created Pac-Man entity.
      */
-    Entity PacMan::createPacMan() {
+    void PacMan::createPacMan() {
+        b2BodyDef ballBodyDef = b2DefaultBodyDef();
+        ballBodyDef.type = b2_kinematicBody;
+        ballBodyDef.fixedRotation = false;
+        ballBodyDef.position = {WIN_WIDTH/2/BOX_SCALE, WIN_HEIGHT/2/BOX_SCALE};//TODO change to start position
+
+        b2ShapeDef ballShapeDef = b2DefaultShapeDef();
+        ballShapeDef.enableSensorEvents = true;
+        ballShapeDef.density = 1;
+        ballShapeDef.material.friction = 0;
+        ballShapeDef.material.restitution = 1.0f;
+        b2Circle ballCircle = {0,0,CLOSE_PACMAN.w*CHARACTER_TEX_SCALE/BOX_SCALE/2};
+
+        b2BodyId ballBody = b2CreateBody(boxWorld, &ballBodyDef);
+        b2CreateCircleShape(ballBody, &ballShapeDef, &ballCircle);
+
         Entity e = Entity::create();
         e.addAll(
             Position{{},0},
-            Direction{},
-            Speed{},
             Drawable{},
             Collider{},
             Input{SDL_SCANCODE_UP,SDL_SCANCODE_DOWN,SDL_SCANCODE_RIGHT,SDL_SCANCODE_LEFT},
@@ -348,7 +239,6 @@ namespace pacman
             PlayerStats{},
             PlayerControlled{}
         );
-        return e;
     }
 
     /**
@@ -356,20 +246,26 @@ namespace pacman
      * @param pos The starting position of the ghost.
      * @return The created ghost entity.
      */
-    Entity PacMan::createGhost() {
+    void PacMan::createGhost(const SDL_FRect& r1,const SDL_FRect& r2, const SDL_FPoint& p) {
+        b2BodyDef padBodyDef = b2DefaultBodyDef();
+        padBodyDef.type = b2_kinematicBody;
+        padBodyDef.position = {p.x / BOX_SCALE, p.y / BOX_SCALE};
+        b2BodyId padBody = b2CreateBody(boxWorld, &padBodyDef);
+
+        b2ShapeDef padShapeDef = b2DefaultShapeDef();
+        padShapeDef.density = 1;
+
+        b2Polygon padBox = b2MakeBox(r1.w*PAD_TEX_SCALE/BOX_SCALE/2, r1.h*PAD_TEX_SCALE/BOX_SCALE/2);
+        b2CreatePolygonShape(padBody, &padShapeDef, &padBox);
+
         Entity e = Entity::create();
         e.addAll(
-            Position{},
-            Direction{},
-            Speed{},
-            Drawable{},
+            Position{{},0},
+            Drawable{{r1,r2}, {r1.w*CHARACTER_TEX_SCALE, r1.h*CHARACTER_TEX_SCALE},0},
             Collider{},
             Intent{},
-            Ghost{},
-            AI{},
-            Eatable{}
+            Ghost{}
         );
-        return e;
     }
 
     /**
@@ -377,16 +273,30 @@ namespace pacman
      * @param pos The position of the pellet.
      * @return The created pellet entity.
      */
-    Entity PacMan::createPellet(SDL_FPoint p) {
+    //TODO - Check if works and how to add all pellets in the board automatically
+    void PacMan::createPellet(SDL_FPoint p) {
+        // 1. Create a static body
+        b2BodyDef pelletBodyDef = b2DefaultBodyDef();
+        pelletBodyDef.type = b2_staticBody;
+        pelletBodyDef.position = {p.x / BOX_SCALE, p.y / BOX_SCALE};
+        b2BodyId pelletBody = b2CreateBody(boxWorld, &pelletBodyDef);
+
+        // 2. Define shape
+        b2ShapeDef pelletShapeDef = b2DefaultShapeDef();
+        pelletShapeDef.density = 1; // Not needed for static, but harmless
+
+        b2Circle pelletCircle = {0,0,PELLET.w*CHARACTER_TEX_SCALE/BOX_SCALE/2};
+        b2CreateCircleShape(pelletBody, &pelletShapeDef, &pelletCircle);
+
+        // 3. Create and assign components
         Entity e = Entity::create();
         e.addAll(
-            Position{},
-            Drawable{},
-            Collider{},
+            Position{{}, 0},
+            Drawable{{PELLET,{}}, {PELLET.w * CHARACTER_TEX_SCALE, PELLET.h * CHARACTER_TEX_SCALE}, 0},
+            Collider{pelletBody},
             Eatable{},
             Pellet{ePelletState::Normal}
         );
-        return e;
     }
 
     /**
@@ -394,7 +304,8 @@ namespace pacman
      * @param pos The position of the wall.
      * @return The created wall entity.
      */
-    Entity PacMan::createWall(SDL_FPoint p) {
+    //TODO over the Pac-Man.png
+    void PacMan::createWall(SDL_FPoint p) {
         Entity e = Entity::create();
         e.addAll(
             Position{},
@@ -402,7 +313,6 @@ namespace pacman
             Collider{},
             Wall{}
         );
-        return e;
     }
 
     /**
@@ -410,13 +320,13 @@ namespace pacman
      * @param pos The position of the background tile.
      * @return The created background entity.
      */
-    Entity PacMan::createBackground(Position pos) {
+    //TODO - maybe do it in prepareWindowAnd.... function
+    void PacMan::createBackground(Position pos) {
         Entity e = Entity::create();
         e.addAll(
             pos,
             Drawable{}
         );
-        return e;
     }
 
     /**
@@ -424,15 +334,17 @@ namespace pacman
      * @param pos The position of the score display.
      * @return The created score entity.
      */
-    Entity PacMan::createScore(Position pos) {
+    //TODO
+    void PacMan::createScore(Position pos) {
         Entity e = Entity::create();
         e.addAll(
             pos,
             Drawable{},
             PlayerStats{}
         );
-        return e;
     }
+
+
     bool PacMan::prepareWindowAndTexture()
     {
         if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -445,7 +357,7 @@ namespace pacman
             cout << SDL_GetError() << endl;
             return false;
             }
-        SDL_Surface *surf = IMG_Load("res/pong.png"); //TODO change to pacman
+        SDL_Surface *surf = IMG_Load("res/pacman.jpg");
         if (surf == nullptr) {
             cout << SDL_GetError() << endl;
             return false;
@@ -456,6 +368,7 @@ namespace pacman
             cout << SDL_GetError() << endl;
             return false;
         }
+
         SDL_DestroySurface(surf);
         return true;
     }
@@ -465,41 +378,7 @@ namespace pacman
         worldDef.gravity = {0,0};
         boxWorld = b2CreateWorld(&worldDef);
     }
-    void PacMan::prepareWalls() const {
-        b2BodyDef wallBodyDef = b2DefaultBodyDef();
-        wallBodyDef.type = b2_staticBody;
 
-        b2ShapeDef wallShapeDef = b2DefaultShapeDef();
-        wallShapeDef.density = 1;
-        b2Polygon wallBox;
-
-        wallBox = b2MakeBox(WIN_WIDTH/2/BOX_SCALE, 1);
-        wallBodyDef.position = {WIN_WIDTH/2/BOX_SCALE,-1};
-        b2BodyId wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        wallBodyDef.position = {WIN_WIDTH/2/BOX_SCALE, WIN_HEIGHT/BOX_SCALE +1};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        wallShapeDef.isSensor = true;
-        wallShapeDef.enableSensorEvents = true;
-
-        wallBox = b2MakeBox(5, WIN_HEIGHT/2/BOX_SCALE);
-        wallBodyDef.position = {-5,WIN_HEIGHT/2/BOX_SCALE};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2ShapeId wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-        Entity::create().addAll(
-            Scorer{wallShape}
-        );
-
-        wallBodyDef.position = {WIN_WIDTH/BOX_SCALE +5, WIN_HEIGHT/2/BOX_SCALE};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-        Entity::create().addAll(
-            Scorer{wallShape}
-        );
-    }
     PacMan::PacMan()
     {
         if (!prepareWindowAndTexture())
@@ -507,7 +386,6 @@ namespace pacman
         SDL_srand(time(nullptr));
 
         prepareBoxWorld();
-        prepareWalls();
         createPacMan();
     }
 
