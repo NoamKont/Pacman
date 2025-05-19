@@ -1,8 +1,8 @@
-#include "Pong.h"
-using namespace pong;
+#include "Pacman.h"
+using namespace pacman;
 
 int main() {
-	Pong p;
+	PacMan p;
 	if (p.valid())
 		p.run();
 	return 0;
