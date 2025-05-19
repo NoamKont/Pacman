@@ -129,6 +129,7 @@ namespace pong
 		wallBodyDef.position = {-5,WIN_HEIGHT/2/BOX_SCALE};
 		wall = b2CreateBody(boxWorld, &wallBodyDef);
 		b2ShapeId wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
+
 		Entity::create().addAll(
 			Scorer{wallShape}
 		);
@@ -136,6 +137,7 @@ namespace pong
 		wallBodyDef.position = {WIN_WIDTH/BOX_SCALE +5, WIN_HEIGHT/2/BOX_SCALE};
 		wall = b2CreateBody(boxWorld, &wallBodyDef);
 		wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
+
 		Entity::create().addAll(
 			Scorer{wallShape}
 		);

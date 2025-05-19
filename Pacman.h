@@ -21,8 +21,12 @@ namespace pacman{
         Power      ///< Power-up pellet (enables Pac-Man to eat ghosts)
     };
 
-
-
+	enum class ePlayers {
+		Pacman,
+		Ghost,
+		Wall,
+		Pellet
+	};
 
     /**
      * @brief Component representing an entity's position on the grid.
@@ -100,11 +104,6 @@ namespace pacman{
     };
 
     /**
-     * @brief Tag component to identify AI-controlled entities.
-     */
-    struct AI { };
-
-    /**
      * @brief Tag component to identify player-controlled entities.
      */
     struct PlayerControlled { };
@@ -122,7 +121,7 @@ namespace pacman{
     /**
      * @brief Tag component for wall entities.
      */
-    struct Wall { };
+    struct Wall {b2ShapeId s; };
 
 
     class PacMan {
@@ -131,17 +130,17 @@ namespace pacman{
         ~PacMan();
 
         void run();
-    private:
 
         bool valid();
-
+	private:
         //void InputSystem();
-        void DecisionSystem();
+        //void AISystem();
         void MovementSystem();
         void CollisionSystem();
         void PelletSystem();
         void RenderSystem();
         void ScoreSystem();
+    	void box_system();
 
         void createPacMan();
         void createGhost(const SDL_FRect& r1, const SDL_FRect& r2, const SDL_FPoint& p);
@@ -156,7 +155,7 @@ namespace pacman{
 
         bool prepareWindowAndTexture();
         void prepareBoxWorld();
-        void prepareWalls() const;
+        void prepareWalls();
 
         static constexpr int	WIN_WIDTH = 1280;
         static constexpr int	WIN_HEIGHT = 800;
@@ -166,9 +165,9 @@ namespace pacman{
         static constexpr float	RAD_TO_DEG = 57.2958f;
 
         static constexpr float	BOX_SCALE = 10;
-        static constexpr float	PELLET_SCALE = 5.f;
-        static constexpr float	CHARACTER_TEX_SCALE = 5.f;
-        static constexpr float	PAD_TEX_SCALE = 0.25f;
+        static constexpr float	CHARACTER_TEX_SCALE = 3.5f;
+
+    	static constexpr float	PAD_TEX_SCALE = 1.f;//0.25f;
 
     	static constexpr SDL_FRect BOARD{ 0, 0, 226, 247 };
 
