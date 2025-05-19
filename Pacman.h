@@ -21,8 +21,12 @@ namespace pacman{
         Power      ///< Power-up pellet (enables Pac-Man to eat ghosts)
     };
 
-
-
+	enum class ePlayers {
+		Pacman,
+		Ghost,
+		Wall,
+		Pellet
+	};
 
     /**
      * @brief Component representing an entity's position on the grid.

@@ -42,95 +42,24 @@ namespace pacman
         wallShapeDef.enableSensorEvents = true;
 
         wallBox = b2MakeBox(5, WIN_HEIGHT/2/BOX_SCALE);
-        wallBodyDef.position = {-5,WIN_HEIGHT/2/BOX_SCALE};
+        wallBodyDef.position = {0,WIN_HEIGHT/2/BOX_SCALE};
         wall = b2CreateBody(boxWorld, &wallBodyDef);
         b2ShapeId wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
 
-        Entity::create().addAll(
+        Entity e = Entity::create();
+        e.addAll(
             Wall{wallShape}
         );
-
-        wallBodyDef.position = {WIN_WIDTH/BOX_SCALE +5, WIN_HEIGHT/2/BOX_SCALE};
+        wallBodyDef.position = {WIN_WIDTH/BOX_SCALE, WIN_HEIGHT/2/BOX_SCALE};
         wall = b2CreateBody(boxWorld, &wallBodyDef);
         wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
 
-        Entity::create().addAll(
+        Entity e1 = Entity::create();
+        e1.addAll(
             Wall{wallShape}
         );
 
-
-
     }
-//     void PacMan::prepareWalls() {
-//     static const char* layout[] = {
-//         "############################",
-//         "#............##............#",
-//         "#.####.#####.##.#####.####.#",
-//         "#.####.#####.##.#####.####.#",
-//         "#.####.#####.##.#####.####.#",
-//         "#..........................#",
-//         "#.####.##.########.##.####.#",
-//         "#.####.##.########.##.####.#",
-//         "#......##....##....##......#",
-//         "######.##### ## #####.######",
-//         "     #.##### ## #####.#     ",
-//         "     #.##          ##.#     ",
-//         "     #.## ###--### ##.#     ",
-//         "######.## #      # ##.######",
-//         "      .   #      #   .      ",
-//         "######.## #      # ##.######",
-//         "     #.## ######## ##.#     ",
-//         "     #.##          ##.#     ",
-//         "     #.## ######## ##.#     ",
-//         "######.## ######## ##.######",
-//         "#............##............#",
-//         "#.####.#####.##.#####.####.#",
-//         "#.####.#####.##.#####.####.#",
-//         "#...##................##...#",
-//         "###.##.##.########.##.##.###",
-//         "###.##.##.########.##.##.###",
-//         "#......##....##....##......#",
-//         "#.##########.##.##########.#",
-//         "#.##########.##.##########.#",
-//         "#..........................#",
-//         "############################"
-//     };
-//
-//     const int rows = sizeof(layout) / sizeof(layout[0]);
-//     const int cols = strlen(layout[0]);
-//     const float tileSize = 8.0f; // pixels per tile
-//     const float halfSize = tileSize / 2 / BOX_SCALE;
-//
-//     b2BodyDef wallBodyDef = b2DefaultBodyDef();
-//     wallBodyDef.type = b2_staticBody;
-//
-//     b2ShapeDef wallShapeDef = b2DefaultShapeDef();
-//     wallShapeDef.density = 1;
-//     //wallShapeDef.friction = 0;
-//     //wallShapeDef.restitution = 0;
-//
-//     b2Polygon box = b2MakeBox(WIN_WIDTH/2/BOX_SCALE, 1);
-//     wallBodyDef.position{WIN_WIDTH/2/BOX_SCALE,-1};
-//     for (int row = 0; row < rows; ++row) {
-//         for (int col = 0; col < cols; ++col) {
-//             if (layout[row][col] == '#') {
-//                 float x = (col + 0.5f) * tileSize / BOX_SCALE;
-//                 float y = (row + 0.5f) * tileSize / BOX_SCALE;
-//
-//                 wallBodyDef.position = {x, y};
-//                 b2BodyId wallBody = b2CreateBody(boxWorld, &wallBodyDef);
-//                 b2ShapeId wallShape = b2CreatePolygonShape(wallBody, &wallShapeDef, &box);
-//
-//                 // Entity::create().addAll(
-//                 //     Collider{wallBody},
-//                 //     Position{{x * BOX_SCALE, y * BOX_SCALE}, 0},
-//                 //     Wall{}
-//                 // );
-//             }
-//         }
-//     }
-// }
-
 
     /**
      * @brief Handles movement logic for entities with Position, Direction, and Speed.
@@ -271,7 +200,6 @@ namespace pacman
             .set<Position>()
             .build();
         static constexpr float	BOX2D_STEP = 1.f/FPS;
-
         b2World_Step(boxWorld, BOX2D_STEP, 4);
 
         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
@@ -284,204 +212,192 @@ namespace pacman
             }
         }
     }
-    void onBeginContact(b2ContactBeginEvent* event) {
-        b2BodyId bodyA = event->shapeA.bodyId;
-        b2BodyId bodyB = event->shapeB.bodyId;
-
-        BodyInfo* infoA = (BodyInfo*)b2Body_GetUserData(bodyA);
-        BodyInfo* infoB = (BodyInfo*)b2Body_GetUserData(bodyB);
-
-        // if (!infoA || !infoB) return;
-        //
-        // if ((infoA->type == PACMAN && infoB->type == GHOST) ||
-        //     (infoB->type == PACMAN && infoA->type == GHOST)) {
-        //     printf("Pac-Man collided with a ghost!\n");
-        //     // Call ECS logic here: lose life, reset, etc.
-        //     }
-        //
-        // if ((infoA->type == PACMAN && infoB->type == PELLET) ||
-        //     (infoB->type == PACMAN && infoA->type == PELLET)) {
-        //     printf("Pac-Man ate a pellet!\n");
-        //     // Mark pellet for removal, update score, etc.
-        //     }
-    }
-
     /**
      * @brief Detects and handles collisions between entities.
      */
-    class CollisionSystem
-    {
-    public:
-        void update() {
-
-            for (int i = 0; i < _entities.size(); ++i)
-            {
-                ent_type e = _entities[i];
-                if (!World::mask(e).test(required_mask))
-                {
-                    _entities[i] = _entities[_entities.size()-1];
-                    _entities.pop();
-                    --i;
-                    continue;
-                }
-                else
-                {
-                    //Logic
-                    const auto& col1 = World::getComponent<Collider>(e);
-                    b2Transform t1 = b2Body_GetTransform(col1.b);
-                    for (int i = 0 ; i < _walls_entities.size(); ++i) {
-                        ent_type wall = _walls_entities[i];
-
-                    }
-                }
-            }
-        }
-
-        void updateEntities(){
-            for (int i = 0; i < World::sizeAdded(); ++i) {
-                const AddedMask& am = World::getAdded(i);
-                if ((!am.prev.test(required_mask)) && (am.next.test(required_mask))) {
-                    _entities.push(am.e);
-                }
-                if ((!am.prev.test(walls_mask)) && (am.next.test(walls_mask))) {
-                    _walls_entities.push(am.e);
-                }
-                if ((!am.prev.test(pellet_mask)) && (am.next.test(pellet_mask))) {
-                    _pellet_entities.push(am.e);
-                }
-            }
-        }
-
-        CollisionSystem()
-        {
-            required_mask = MaskBuilder()
-            .set<Collider>()
-            .build();
-            walls_mask = MaskBuilder()
-            .set<Wall>()
-            .build();
-            pellet_mask = MaskBuilder()
-            .set<Pellet>()
-            .build();
-
-            for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-                if (World::mask(e).test(walls_mask)) {
-                    _walls_entities.push(e);
-                }
-                if (World::mask(e).test(pellet_mask)) {
-                    _pellet_entities.push(e);
-                }
-                if (World::mask(e).test(required_mask)) {
-                    _entities.push(e);
-                }
-            }
-        }
-    private:
-        Bag<ent_type,100> _entities;
-        Bag<ent_type,100> _walls_entities;
-        Bag<ent_type,100> _pellet_entities;
-        Mask required_mask;
-        Mask walls_mask;
-        Mask pellet_mask;
-    };
-    //TODO
-    // void PacMan::CollisionSystem()
+    // class CollisionSystem
     // {
-    //     Mask required = MaskBuilder()
-    //         .set<Collider>()
-    //         .build();
+    // public:
+    //     void update() {
     //
-    //     for (id_type id1 = 0; id1 <= World::maxId().id; ++id1)
-    //     {
-    //         ent_type e1{id1};
-    //         if (!World::mask(e1).test(required)) {
-    //             continue;
-    //         }
-    //
-    //         const auto& col1 = World::getComponent<Collider>(e1);
-    //
-    //         b2Transform t1 = b2Body_GetTransform(col1.b);
-    //         SDL_FRect rect1 = {
-    //                 t1.p.x * BOX_SCALE, t1.p.y * BOX_SCALE,
-    //                 16, 16  // Assuming tile size. Adjust if needed per entity.
-    //         };
-    //
-    //         for (id_type id2 = id1 + 1; id2 <= World::maxId().id; ++id2) {
-    //             ent_type e2{id2};
-    //             if (!World::mask(e2).test(required))
+    //         for (int i = 0; i < _entities.size(); ++i)
+    //         {
+    //             ent_type e = _entities[i];
+    //             if (!World::mask(e).test(required_mask))
+    //             {
+    //                 _entities[i] = _entities[_entities.size()-1];
+    //                 _entities.pop();
+    //                 --i;
     //                 continue;
-    //
-    //             const auto &pos2 = World::getComponent<Position>(e2);
-    //             const auto &col2 = World::getComponent<Collider>(e2);
-    //
-    //             b2Transform t2 = b2Body_GetTransform(col2.b);
-    //             SDL_FRect rect2 = {
-    //                     t2.p.x * BOX_SCALE, t2.p.y * BOX_SCALE,
-    //                     16, 16
-    //             };
-    //
-    //             if (!SDL_HasRectIntersectionFloat(&rect1, &rect2))
-    //                 continue;
-    //
-    //             ///Check who intersect with who
-    //             bool isPlayer1 = World::mask(e1).test(Component<PlayerControlled>::Bit);
-    //             bool isPlayer2 = World::mask(e2).test(Component<PlayerControlled>::Bit);
-    //             bool isGhost1 = World::mask(e1).test(Component<Ghost>::Bit);
-    //             bool isGhost2 = World::mask(e2).test(Component<Ghost>::Bit);
-    //
-    //             /// Player hit ghost - reduce life
-    //             if ((isGhost1 && isPlayer2) || (isGhost2 && isPlayer1)) {
-    //                 ent_type player = isPlayer1 ? e1 : e2;
-    //
-    //                 if (World::mask(player).test(Component<PlayerStats>::Bit)) {
-    //                     auto& stats = World::getComponent<PlayerStats>(player);
-    //                     stats.lives -= 1;
-    //                     std::cout << "Player hit by ghost! Lives left: " << stats.lives << "\n";
-    //                 }
     //             }
+    //             else
+    //             {
+    //                 //Logic
     //
-    //             bool isWall1 = World::mask(e1).test(Component<Wall>::Bit);
-    //             bool isWall2 = World::mask(e2).test(Component<Wall>::Bit);
+    //                 const auto& col1 = World::getComponent<Collider>(e);
+    //                 b2Transform t1 = b2Body_GetTransform(col1.b);
+    //                 for (int i = 0 ; i < _walls_entities.size(); ++i) {
+    //                     ent_type wall = _walls_entities[i];
     //
-    //             /// Handle wall collisions – stop movement or bounce back
-    //             if ((isWall1 && (isPlayer2 || isGhost2)) || (isWall2 && (isPlayer1 || isGhost1))) {
-    //                 ent_type entity = (isWall1 ? e2 : e1);
-    //
-    //                 if (World::mask(entity).test(Component<Ghost>::Bit)) {
-    //                     auto& dir = World::getComponent<Intent>(entity);
-    //                     dir.up = !dir.up;
-    //                     dir.down = !dir.down;
-    //                     dir.left = !dir.left;
-    //                     dir.right = !dir.right;
     //                 }
-    //             }
-    //
-    //             /// Handle pellet collisions - increase score/power up
-    //             bool isPellet1 = World::mask(e1).test(Component<Pellet>::Bit);
-    //             bool isPellet2 = World::mask(e2).test(Component<Pellet>::Bit);
-    //
-    //             if ((isPlayer1 && isPellet2) || (isPlayer2 && isPellet1)) {
-    //                 ent_type pellet = isPellet1 ? e1 : e2;
-    //                 ent_type player = isPlayer1 ? e1 : e2;
-    //
-    //                 ///Score handling
-    //                 if (World::mask(player).test(Component<PlayerStats>::Bit)) {
-    //                     auto& stats = World::getComponent<PlayerStats>(player);
-    //                     const auto& pelletData = World::getComponent<Pellet>(pellet);
-    //
-    //                     if (pelletData.type == ePelletState::Normal) {
-    //                         stats.score += 10;
-    //                     } else if (pelletData.type == ePelletState::Power) {
-    //                         stats.score += 50;
-    //                         // TODO: Set ghosts to vulnerable state (if implemented)
-    //                     }
-    //                 }
-    //
-    //                 World::destroyEntity(pellet);
     //             }
     //         }
     //     }
-    // }
+    //
+    //     void updateEntities(){
+    //         for (int i = 0; i < World::sizeAdded(); ++i) {
+    //             const AddedMask& am = World::getAdded(i);
+    //             if ((!am.prev.test(required_mask)) && (am.next.test(required_mask))) {
+    //                 _entities.push(am.e);
+    //             }
+    //             if ((!am.prev.test(walls_mask)) && (am.next.test(walls_mask))) {
+    //                 _walls_entities.push(am.e);
+    //             }
+    //             if ((!am.prev.test(pellet_mask)) && (am.next.test(pellet_mask))) {
+    //                 _pellet_entities.push(am.e);
+    //             }
+    //         }
+    //     }
+    //
+    //     CollisionSystem()
+    //     {
+    //         required_mask = MaskBuilder()
+    //         .set<Collider>()
+    //         .build();
+    //         walls_mask = MaskBuilder()
+    //         .set<Wall>()
+    //         .build();
+    //         pellet_mask = MaskBuilder()
+    //         .set<Pellet>()
+    //         .build();
+    //
+    //         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
+    //             if (World::mask(e).test(walls_mask)) {
+    //                 _walls_entities.push(e);
+    //             }
+    //             if (World::mask(e).test(pellet_mask)) {
+    //                 _pellet_entities.push(e);
+    //             }
+    //             if (World::mask(e).test(required_mask)) {
+    //                 _entities.push(e);
+    //             }
+    //         }
+    //     }
+    // private:
+    //     Bag<ent_type,100> _entities;
+    //     Bag<ent_type,100> _walls_entities;
+    //     Bag<ent_type,100> _pellet_entities;
+    //     Mask required_mask;
+    //     Mask walls_mask;
+    //     Mask pellet_mask;
+    // };
+    //TODO
+     void PacMan::CollisionSystem()
+     {
+         Mask required = MaskBuilder()
+             .set<Collider>()
+             .build();
+
+         for (id_type id1 = 0; id1 <= World::maxId().id; ++id1)
+         {
+             ent_type e1{id1};
+             if (!World::mask(e1).test(required)) {
+                 continue;
+             }
+
+             b2ContactEvents contactEvents = b2World_GetContactEvents(boxWorld);
+             for (int i = 0; i < contactEvents.hitCount; ++i) {
+                 b2ContactHitEvent event = contactEvents.hitEvents[i];
+                 b2ShapeId shapeA = event.shapeIdA;
+                 b2ShapeId shapeB = event.shapeIdB;
+                 // Handle significant collision between shapeA and shapeB
+                 std::cout << "Hit " << "\n";
+             }
+
+             const auto& col1 = World::getComponent<Collider>(e1);
+
+             b2Transform t1 = b2Body_GetTransform(col1.b);
+             SDL_FRect rect1 = {
+                     t1.p.x * BOX_SCALE, t1.p.y * BOX_SCALE,
+                     16, 16  // Assuming tile size. Adjust if needed per entity.
+             };
+
+             for (id_type id2 = id1 + 1; id2 <= World::maxId().id; ++id2) {
+                 ent_type e2{id2};
+                 if (!World::mask(e2).test(required))
+                     continue;
+
+                 const auto &pos2 = World::getComponent<Position>(e2);
+                 const auto &col2 = World::getComponent<Collider>(e2);
+
+                 b2Transform t2 = b2Body_GetTransform(col2.b);
+                 SDL_FRect rect2 = {
+                         t2.p.x * BOX_SCALE, t2.p.y * BOX_SCALE,
+                         16, 16
+                 };
+
+                 if (!SDL_HasRectIntersectionFloat(&rect1, &rect2))
+                     continue;
+
+                 ///Check who intersect with who
+                 bool isPlayer1 = World::mask(e1).test(Component<PlayerControlled>::Bit);
+                 bool isPlayer2 = World::mask(e2).test(Component<PlayerControlled>::Bit);
+                 bool isGhost1 = World::mask(e1).test(Component<Ghost>::Bit);
+                 bool isGhost2 = World::mask(e2).test(Component<Ghost>::Bit);
+
+                 /// Player hit ghost - reduce life
+                 if ((isGhost1 && isPlayer2) || (isGhost2 && isPlayer1)) {
+                     ent_type player = isPlayer1 ? e1 : e2;
+
+                     if (World::mask(player).test(Component<PlayerStats>::Bit)) {
+                         auto& stats = World::getComponent<PlayerStats>(player);
+                         stats.lives -= 1;
+                         std::cout << "Player hit by ghost! Lives left: " << stats.lives << "\n";
+                     }
+                 }
+
+                 bool isWall1 = World::mask(e1).test(Component<Wall>::Bit);
+                 bool isWall2 = World::mask(e2).test(Component<Wall>::Bit);
+
+                 /// Handle wall collisions – stop movement or bounce back
+                 if ((isWall1 && (isPlayer2 || isGhost2)) || (isWall2 && (isPlayer1 || isGhost1))) {
+                     ent_type entity = (isWall1 ? e2 : e1);
+
+                     if (World::mask(entity).test(Component<Ghost>::Bit)) {
+                         auto& dir = World::getComponent<Intent>(entity);
+                         dir.up = !dir.up;
+                         dir.down = !dir.down;
+                         dir.left = !dir.left;
+                         dir.right = !dir.right;
+                     }
+                 }
+
+                 /// Handle pellet collisions - increase score/power up
+                 bool isPellet1 = World::mask(e1).test(Component<Pellet>::Bit);
+                 bool isPellet2 = World::mask(e2).test(Component<Pellet>::Bit);
+
+                 if ((isPlayer1 && isPellet2) || (isPlayer2 && isPellet1)) {
+                     ent_type pellet = isPellet1 ? e1 : e2;
+                     ent_type player = isPlayer1 ? e1 : e2;
+
+                     ///Score handling
+                     if (World::mask(player).test(Component<PlayerStats>::Bit)) {
+                         auto& stats = World::getComponent<PlayerStats>(player);
+                         const auto& pelletData = World::getComponent<Pellet>(pellet);
+
+                         if (pelletData.type == ePelletState::Normal) {
+                             stats.score += 10;
+                         } else if (pelletData.type == ePelletState::Power) {
+                             stats.score += 50;
+                             // TODO: Set ghosts to vulnerable state (if implemented)
+                         }
+                     }
+
+                     World::destroyEntity(pellet);
+                 }
+             }
+         }
+     }
 
     /**
      * @brief Updates pellet-related logic such as state changes or consumption.
@@ -603,7 +519,8 @@ namespace pacman
         b2Circle pacmanCircle = {0,0,OPEN_PACMAN.w*CHARACTER_TEX_SCALE/BOX_SCALE/2};
         b2CreateCircleShape(pacmanBody, &pacmanShapeDef, &pacmanCircle);
 
-        Entity::create().addAll(
+        Entity e = Entity::create();
+        e.addAll(
          Position{{},0},
          Drawable{{OPEN_PACMAN,CLOSE_PACMAN}, {OPEN_PACMAN.w*CHARACTER_TEX_SCALE, OPEN_PACMAN.h*CHARACTER_TEX_SCALE},0},
          Collider{pacmanBody},
@@ -611,7 +528,7 @@ namespace pacman
          Input{SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT},
          PlayerControlled{},
          PlayerStats{0,3}
-     );
+         );
     }
 
     /**
