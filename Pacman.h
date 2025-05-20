@@ -82,7 +82,10 @@ namespace pacman{
     /**
      * @brief Component that expresses the current intended action of an entity.
      */
-    using Intent = struct { bool up, down, right, left; };
+    using Intent = struct {
+        bool up = false, down = false, left = false, right = false;
+        bool blockedUp = false, blockedDown = false, blockedLeft = false, blockedRight = false;
+    };
 
     // struct Intent {
     //     eAction action = eAction::None;
@@ -121,7 +124,7 @@ namespace pacman{
     /**
      * @brief Tag component for wall entities.
      */
-    struct Wall {b2ShapeId s; };
+    struct Wall {b2ShapeId s; SDL_FPoint size;};
 
 
     class PacMan {
@@ -151,28 +154,27 @@ namespace pacman{
 
         void createWall(SDL_FPoint p);
 
-        void createBackground(Position pos);
+        void createBackground();
 
         bool prepareWindowAndTexture();
         void prepareBoxWorld();
         void prepareWalls();
 
-        static constexpr int	WIN_WIDTH = 1280;
-        static constexpr int	WIN_HEIGHT = 800;
+        static constexpr SDL_FRect BOARD{ 227, 0, 226, 253 };
+        static constexpr SDL_FRect PELLET{ 19, 11, 2, 2 };
+        static constexpr SDL_FRect POWER_PELLET{ 7, 23, 9,9  };
+
+        static constexpr float	BOX_SCALE = 10;
+        static constexpr float	CHARACTER_TEX_SCALE = 2.9f;
+
+        static constexpr int	WIN_WIDTH = BOARD.w * CHARACTER_TEX_SCALE;
+        static constexpr int	WIN_HEIGHT = BOARD.h * CHARACTER_TEX_SCALE;
         static constexpr int	FPS = 60;
 
         static constexpr float	GAME_FRAME = 1000.f/FPS;
         static constexpr float	RAD_TO_DEG = 57.2958f;
 
-        static constexpr float	BOX_SCALE = 10;
-        static constexpr float	CHARACTER_TEX_SCALE = 3.5f;
-
     	static constexpr float	PAD_TEX_SCALE = 1.f;//0.25f;
-
-    	static constexpr SDL_FRect BOARD{ 0, 0, 226, 247 };
-
-    	static constexpr SDL_FRect PELLET{ 19, 11, 2, 2 };
-    	static constexpr SDL_FRect POWER_PELLET{ 7, 23, 9,9  };
 
 		static constexpr SDL_FRect OPEN_PACMAN{ 456, 0, 13, 14 };
 		static constexpr SDL_FRect CLOSE_PACMAN{ 472, 0, 13, 14 };
