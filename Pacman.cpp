@@ -604,21 +604,61 @@ namespace pacman
 
     void PacMan::prepareWalls()
     {
-        //upper and lower borders
+//        //upper and lower borders
         createWall({WIN_WIDTH  / 2.0f, 11.0f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
         createWall({WIN_WIDTH  / 2.0f, WIN_HEIGHT - 11.f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
-        //side borders
-        createWall({16.0f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
+//        //side borders
+        createWall({12.0f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
         createWall({WIN_WIDTH - 12.f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
 
+        //Top middle
         createWall({WIN_WIDTH / 2.f, 10.0f},29.f, 65 * CHARACTER_TEX_SCALE);
-
+        //top middle verticle
         createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
-
+        //Top middle Horizontal
         createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+        //Left box 1
+        createWall({31 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Top second left
+        createWall({75 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},32 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Left box 2
+        createWall({31 * CHARACTER_TEX_SCALE, 57 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Left box 3
+        createWall({14 * CHARACTER_TEX_SCALE, 94 * CHARACTER_TEX_SCALE},60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Left box 4
+        createWall({14 * CHARACTER_TEX_SCALE, 142 * CHARACTER_TEX_SCALE},60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Left hor 5
+        createWall({33 * CHARACTER_TEX_SCALE, 180 * CHARACTER_TEX_SCALE},24 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Left hor 6
+        createWall({13 * CHARACTER_TEX_SCALE, 205 * CHARACTER_TEX_SCALE},15 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Left 7
+        createWall({56 * CHARACTER_TEX_SCALE, 230 * CHARACTER_TEX_SCALE},72 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Left Vert7
+        createWall({63 * CHARACTER_TEX_SCALE, 210 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 14 * CHARACTER_TEX_SCALE);
+        //Left Vert6
+        createWall({40 * CHARACTER_TEX_SCALE, 196 * CHARACTER_TEX_SCALE},6 * CHARACTER_TEX_SCALE, 20 * CHARACTER_TEX_SCALE);
+        //Left Vert5
+        createWall({65 * CHARACTER_TEX_SCALE, 142 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
+        //Left Vert4
+        createWall({65 * CHARACTER_TEX_SCALE, 81 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 53 * CHARACTER_TEX_SCALE);
+        //Left2 hor 1
+        createWall({76 * CHARACTER_TEX_SCALE, 82 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+        //Left2 hor 2
+        createWall({76 * CHARACTER_TEX_SCALE, 179 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+        //Top middle Horizontal 2
+        createWall({WIN_WIDTH / 2.f, 154 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Top middle Horizontal 3
+        createWall({WIN_WIDTH / 2.f, 204 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //bottom of middle box
+        createWall({WIN_WIDTH / 2.f, 130 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //left of middle box
+        createWall({87 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
+        //right of middle box
+        createWall({136 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
 
-        createWall({31 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 16 * CHARACTER_TEX_SCALE);
-        createWall({75 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},32 * CHARACTER_TEX_SCALE, 16 * CHARACTER_TEX_SCALE);
+
+
+
 
     }
 
@@ -632,14 +672,14 @@ namespace pacman
         prepareWalls();
 
         createBackground();
-        preparePellets();
+       // preparePellets();
 
         createPacMan(3);
 
-        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
-        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+//        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+//        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+//        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+//        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
     }
 
     PacMan::~PacMan()
