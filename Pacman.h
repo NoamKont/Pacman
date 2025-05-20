@@ -21,63 +21,29 @@ namespace pacman{
         Power      ///< Power-up pellet (enables Pac-Man to eat ghosts)
     };
 
-	enum class ePlayers {
-		Pacman,
-		Ghost,
-		Wall,
-		Pellet
-	};
 
     /**
      * @brief Component representing an entity's position on the grid.
      */
     using Position = struct {SDL_FPoint p; float a;};
-    // struct Position {
-    //     int x = 0;
-    //     int y = 0;
-    // };
-
-    /**
-     * @brief Component indicating movement direction.
-     */
-    struct Direction {
-        int dx = 0;
-        int dy = 0;
-    };
-
-    /**
-     * @brief Component storing an entity's movement speed.
-     */
-    struct Speed {
-        float value = 1.0f;
-    };
 
     /**
      * @brief Component representing sprite animation state for rendering.
      */
     using Drawable = struct { SDL_FRect part[2]; SDL_FPoint size; size_t frame; };
 
-    // struct Sprite {
-    //     eAnimationState state = eAnimationState::Idle;
-    // };
 
     /**
      * @brief Component that defines an entity's hitbox size for collision detection.
      */
     using Collider = struct { b2BodyId b; };
 
-    // struct Hitbox {
-    //     int width = 1;
-    //     int height = 1;
-    // };
 
     /**
      * @brief Component that stores the last input from a player.
      */
     using Input = struct { SDL_Scancode up, down, right, left; };
-    // struct Input {
-    //     int keyCode = -1;
-    // };
+
 
     /**
      * @brief Component that expresses the current intended action of an entity.
@@ -86,10 +52,6 @@ namespace pacman{
         bool up = false, down = false, left = false, right = false;
         bool blockedUp = false, blockedDown = false, blockedLeft = false, blockedRight = false;
     };
-
-    // struct Intent {
-    //     eAction action = eAction::None;
-    // };
 
     /**
      * @brief Component for pellets, including whether it's a normal or power pellet.
@@ -117,14 +79,14 @@ namespace pacman{
     struct Ghost { };
 
     /**
-     * @brief Tag component for entities that can be eaten (e.g., pellets, ghosts in vulnerable state).
-     */
-    struct Eatable { }; ///Is it necessary? every pallete is eatable so why the tag
-
-    /**
      * @brief Tag component for wall entities.
      */
     struct Wall {b2ShapeId s; SDL_FPoint size;};
+
+	/**
+	* @brief Tag component for Background entities.
+	*/
+	struct Background { };
 
 
     class PacMan {
@@ -136,29 +98,25 @@ namespace pacman{
 
         bool valid();
 	private:
-        //void InputSystem();
-        //void AISystem();
+        void InputSystem();
+        void AISystem();
         void MovementSystem();
         void CollisionSystem();
-        void PelletSystem();
         void RenderSystem();
-        void ScoreSystem();
-    	void box_system();
+        void box_system();
+    	void EndGameSystem();
 
-        void createPacMan();
+        void createPacMan(int lives);
         void createGhost(const SDL_FRect& r1, const SDL_FRect& r2, const SDL_FPoint& p);
-
         void createPellet(SDL_FPoint p);
-
-        void createScore(Position pos);
-
-        void createWall(SDL_FPoint p);
-
+        void createScore(float n_life);
+        void createWall(SDL_FPoint p, float w, float h);
         void createBackground();
 
         bool prepareWindowAndTexture();
         void prepareBoxWorld();
         void prepareWalls();
+    	void preparePellets();
 
         static constexpr SDL_FRect BOARD{ 227, 0, 226, 253 };
         static constexpr SDL_FRect PELLET{ 19, 11, 2, 2 };

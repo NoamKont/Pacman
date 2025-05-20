@@ -12,9 +12,9 @@ namespace bagel
 	{
 		bool	AggregateUpdates = true;
 		bool	CallbackOnDestroy = true;
-		bool	DynamicResize = false;
+		bool	DynamicResize = true;
 		int		IdBagSize = 5;
-		int		InitialEntities = 10;
+		int		InitialEntities = 1000;
 		int		InitialPackedSize = 5;
 		int		MaxComponents = 10;
 	};
@@ -289,7 +289,7 @@ namespace bagel
 
 			if constexpr (Params.AggregateUpdates) {
 				Mask next = _masks[e.id];
-				_added.push({prev,next,e});
+				//_added.push({prev,next,e});
 			}
 		}
 		template <class T, class...Ts>
@@ -316,13 +316,13 @@ namespace bagel
 			_callbacks[Component<T>::Index] = cb;
 		}
 
-		static size_type sizeAdded() { return _added.size(); }
-		static const AddedMask& getAdded(int i) { return _added[i]; }
-
-		static void step() { _added.clear(); }
+		// static size_type sizeAdded() { return _added.size(); }
+		// static const AddedMask& getAdded(int i) { return _added[i]; }
+		//
+		// static void step() { _added.clear(); }
 	private:
 		static inline StorageCallbacks _callbacks[Params.MaxComponents] = {nullptr};
-		static inline Bag<AddedMask,100>		_added;
+		//static inline Bag<AddedMask,1000>		_added;
 
 		static inline ent_type								_maxId{-1};
 		static inline Bag<Mask,		Params.InitialEntities> _masks;

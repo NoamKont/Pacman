@@ -20,47 +20,6 @@ namespace pacman
         return tex != nullptr;
     }
 
-    void PacMan::prepareWalls()
-    {
-        b2BodyDef wallBodyDef = b2DefaultBodyDef();
-        wallBodyDef.type = b2_staticBody;
-
-        b2ShapeDef wallShapeDef = b2DefaultShapeDef();
-        wallShapeDef.density = 1;
-        b2Polygon wallBox;
-
-        wallBox = b2MakeBox(WIN_WIDTH/2/BOX_SCALE, 1);
-        wallBodyDef.position = {WIN_WIDTH/2/BOX_SCALE,-1};
-        b2BodyId wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        wallBodyDef.position = {WIN_WIDTH/2/BOX_SCALE, WIN_HEIGHT/BOX_SCALE +1};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        wallShapeDef.isSensor = true;
-        wallShapeDef.enableSensorEvents = true;
-
-        wallBox = b2MakeBox(5, WIN_HEIGHT/2/BOX_SCALE);
-        wallBodyDef.position = {0,WIN_HEIGHT/2/BOX_SCALE};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        b2ShapeId wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        Entity e = Entity::create();
-        e.addAll(
-            Wall{wallShape}
-        );
-        wallBodyDef.position = {WIN_WIDTH/BOX_SCALE, WIN_HEIGHT/2/BOX_SCALE};
-        wall = b2CreateBody(boxWorld, &wallBodyDef);
-        wallShape = b2CreatePolygonShape(wall, &wallShapeDef, &wallBox);
-
-        Entity e1 = Entity::create();
-        e1.addAll(
-            Wall{wallShape}
-        );
-
-    }
-
     /**
      * @brief Handles movement logic for entities with Position, Direction, and Speed.
      */
@@ -77,9 +36,10 @@ namespace pacman
                 auto& i = World::getComponent<Intent>(e);
                 const auto& c = World::getComponent<Collider>(e);
                 bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
+                bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
 
-                const float y = i.up ? -30 : i.down ? 30 : 0;
-                const float x = i.left ? -30 : i.right ? 30 : 0;
+                const float y = i.up ? -20 : i.down ? 20 : 0;
+                const float x = i.left ? -20 : i.right ? 20 : 0;
 
                 b2Body_SetLinearVelocity(c.b, {x,y});
                 if (isPlayer) {
@@ -104,77 +64,43 @@ namespace pacman
     /**
      * @brief Processes user input for entities that are player-controlled.
      */
-    class InputSystem
-    {
-    public:
-        void update() {
-            SDL_PumpEvents();
-            const bool* keys = SDL_GetKeyboardState(nullptr);
-
-            for (int i = 0; i < _entities.size(); ++i)
-            {
-                ent_type e = _entities[i];
-                if (!World::mask(e).test(mask))
-                {
-                    _entities[i] = _entities[_entities.size()-1];
-                    _entities.pop();
-                    --i;
-                    continue;
-                }
-                else
-                {
-                    const auto& k = World::getComponent<Input>(e);
-                    auto& in = World::getComponent<Intent>(e);
-                    if (keys[k.up] && !in.blockedUp) {
-                        in.up = true;
-                        in.down = in.left = in.right = false;
-                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                    }
-                    else if (keys[k.down] && !in.blockedDown) {
-                        in.down = true;
-                        in.up = in.left = in.right = false;
-                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                    }
-                    else if (keys[k.left] && !in.blockedLeft) {
-                        in.left = true;
-                        in.up = in.down = in.right = false;
-                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                    }
-                    else if (keys[k.right] && !in.blockedRight) {
-                        in.right = true;
-                        in.up = in.down = in.left = false;
-                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                    }
-                }
-            }
-        }
-
-        void updateEntities(){
-            for (int i = 0; i < World::sizeAdded(); ++i) {
-                const AddedMask& am = World::getAdded(i);
-
-                if ((!am.prev.test(mask)) && (am.next.test(mask))) {
-                    _entities.push(am.e);
-                }
-            }
-        }
-
-        InputSystem()
-        {
-            for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-                if (World::mask(e).test(mask)) {
-                    _entities.push(e);
-                }
-            }
-        }
-    private:
-        Bag<ent_type,100> _entities;
-        static const inline Mask mask = MaskBuilder()
+    void PacMan::InputSystem() {
+        Mask required = MaskBuilder()
             .set<Input>()
             .set<Intent>()
             .set<PlayerControlled>()
             .build();
-    };
+
+        SDL_PumpEvents();
+        const bool* keys = SDL_GetKeyboardState(nullptr);
+        for (id_type id = 0; id <= World::maxId().id; ++id) {
+            ent_type e{id};
+            if (World::mask(e).test(required)) {
+                const auto& k = World::getComponent<Input>(e);
+                auto& in = World::getComponent<Intent>(e);
+                if (keys[k.up] && !in.blockedUp) {
+                    in.up = true;
+                    in.down = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.down] && !in.blockedDown) {
+                    in.down = true;
+                    in.up = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.left] && !in.blockedLeft) {
+                    in.left = true;
+                    in.up = in.down = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.right] && !in.blockedRight) {
+                    in.right = true;
+                    in.up = in.down = in.left = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+            }
+        }
+    }
     /**
      * @brief Prepares rendering data for entities with sprites and positions.
      */
@@ -185,17 +111,27 @@ namespace pacman
                 .build();
 
         SDL_RenderClear(ren);
-        //SDL_RenderTexture(ren, tex, &BOARD, nullptr);
         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
             if (World::mask(e).test(mask)) {
                 const auto& t = World::getComponent<Position>(e);
                 auto& d = World::getComponent<Drawable>(e);
-                bool ball = World::mask(e).test(Component<PlayerControlled>::Bit);
+                bool pacman = World::mask(e).test(Component<PlayerControlled>::Bit);
                 bool ghost = World::mask(e).test(Component<Ghost>::Bit);
-                if (ball || ghost) {
+
+                if (pacman || ghost) {
                     d.frame++;
                     if (d.frame == 100)
                         d.frame = 0;
+                    if (pacman) {
+                        auto& stat = World::getComponent<PlayerStats>(e);
+                        for (int i = 0 ; i < stat.lives; ++i) {
+                            float space = 5.f + (float) i*CLOSE_PACMAN.w;
+                            SDL_FRect lives = {(space)*CHARACTER_TEX_SCALE, (BOARD.h + 4.f) * CHARACTER_TEX_SCALE, CLOSE_PACMAN.w*CHARACTER_TEX_SCALE, CLOSE_PACMAN.h*CHARACTER_TEX_SCALE};
+                            SDL_RenderTextureRotated(
+                                ren, tex, &CLOSE_PACMAN, &lives, 0,
+                                nullptr, SDL_FLIP_NONE);
+                        }
+                    }
                 }
                 const SDL_FRect dst = {
                     t.p.x-d.size.x/2,
@@ -211,6 +147,9 @@ namespace pacman
         SDL_RenderPresent(ren);
     }
 
+    /**
+    * @brief Prepares rendering data for entities with integration of box2d.
+    */
     void PacMan::box_system()
     {
         static const Mask mask = MaskBuilder()
@@ -230,272 +169,115 @@ namespace pacman
             }
         }
     }
+
     /**
      * @brief Detects and handles collisions between entities.
      */
-    // class CollisionSystem
-    // {
-    // public:
-    //     void update() {
-    //
-    //         for (int i = 0; i < _entities.size(); ++i)
-    //         {
-    //             ent_type e = _entities[i];
-    //             if (!World::mask(e).test(required_mask))
-    //             {
-    //                 _entities[i] = _entities[_entities.size()-1];
-    //                 _entities.pop();
-    //                 --i;
-    //                 continue;
-    //             }
-    //             else
-    //             {
-    //                 //Logic
-    //
-    //                 const auto& col1 = World::getComponent<Collider>(e);
-    //                 b2Transform t1 = b2Body_GetTransform(col1.b);
-    //                 for (int i = 0 ; i < _walls_entities.size(); ++i) {
-    //                     ent_type wall = _walls_entities[i];
-    //
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     void updateEntities(){
-    //         for (int i = 0; i < World::sizeAdded(); ++i) {
-    //             const AddedMask& am = World::getAdded(i);
-    //             if ((!am.prev.test(required_mask)) && (am.next.test(required_mask))) {
-    //                 _entities.push(am.e);
-    //             }
-    //             if ((!am.prev.test(walls_mask)) && (am.next.test(walls_mask))) {
-    //                 _walls_entities.push(am.e);
-    //             }
-    //             if ((!am.prev.test(pellet_mask)) && (am.next.test(pellet_mask))) {
-    //                 _pellet_entities.push(am.e);
-    //             }
-    //         }
-    //     }
-    //
-    //     CollisionSystem()
-    //     {
-    //         required_mask = MaskBuilder()
-    //         .set<Collider>()
-    //         .build();
-    //         walls_mask = MaskBuilder()
-    //         .set<Wall>()
-    //         .build();
-    //         pellet_mask = MaskBuilder()
-    //         .set<Pellet>()
-    //         .build();
-    //
-    //         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-    //             if (World::mask(e).test(walls_mask)) {
-    //                 _walls_entities.push(e);
-    //             }
-    //             if (World::mask(e).test(pellet_mask)) {
-    //                 _pellet_entities.push(e);
-    //             }
-    //             if (World::mask(e).test(required_mask)) {
-    //                 _entities.push(e);
-    //             }
-    //         }
-    //     }
-    // private:
-    //     Bag<ent_type,100> _entities;
-    //     Bag<ent_type,100> _walls_entities;
-    //     Bag<ent_type,100> _pellet_entities;
-    //     Mask required_mask;
-    //     Mask walls_mask;
-    //     Mask pellet_mask;
-    // };
-    //TODO
-     void PacMan::CollisionSystem()
-     {
-         Mask required = MaskBuilder()
-             .set<Collider>()
-             .build();
+    void PacMan::CollisionSystem()
+    {
+        const auto se = b2World_GetSensorEvents(boxWorld);
+        for (int i = 0; i < se.beginCount; ++i) {
+            b2BodyId sensor = b2Shape_GetBody(se.beginEvents[i].sensorShapeId);
+            b2BodyId b = b2Shape_GetBody(se.beginEvents[i].visitorShapeId);
+            auto *e = static_cast<ent_type*>(b2Body_GetUserData(b));
+            auto *e1 = static_cast<ent_type*>(b2Body_GetUserData(sensor));
 
-         for (id_type id1 = 0; id1 <= World::maxId().id; ++id1)
-         {
-             ent_type e1{id1};
-             if (!World::mask(e1).test(required)) {
-                 continue;
-             }
+            bool sensorIsPlayer = World::mask(*e1).test(Component<PlayerControlled>::Bit);
+            bool sensorIsWall = World::mask(*e1).test(Component<Wall>::Bit);
 
-             b2ContactEvents contactEvents = b2World_GetContactEvents(boxWorld);
-             for (int i = 0; i < contactEvents.hitCount; ++i) {
-                 b2ContactHitEvent event = contactEvents.hitEvents[i];
-                 b2ShapeId shapeA = event.shapeIdA;
-                 b2ShapeId shapeB = event.shapeIdB;
-                 // Handle significant collision between shapeA and shapeB
-                 std::cout << "Hit " << "\n";
-             }
+            bool isPlayer = World::mask(*e).test(Component<PlayerControlled>::Bit);
+            bool isGhost = World::mask(*e).test(Component<Ghost>::Bit);
+            bool isPellet = World::mask(*e).test(Component<Pellet>::Bit);
+            bool isWall = World::mask(*e).test(Component<Wall>::Bit);
 
-             const auto& col1 = World::getComponent<Collider>(e1);
+            if (isWall && sensorIsWall) {
+                continue;
+            }
+            if (sensorIsWall || (isWall && sensorIsPlayer)) {
+                //pacman or ghost hit wall
+                ent_type player = sensorIsPlayer ? *e1 : *e;
+                auto& dir = World::getComponent<Intent>(player);
+                const auto& col = World::getComponent<Collider>(player);
+                b2Vec2 pos = b2Body_GetPosition(col.b);
 
-             b2Transform t1 = b2Body_GetTransform(col1.b);
-             float width1 = 16, height1 = 16;
-             if (World::mask(e1).test(Component<Drawable>::Bit)) {
-                 const auto& d1 = World::getComponent<Drawable>(e1);
-                 width1 = d1.size.x;
-                 height1 = d1.size.y;
-             } else if (World::mask(e1).test(Component<Wall>::Bit)) {
-                 const auto& w1 = World::getComponent<Wall>(e1);
-                 width1 = w1.size.x;
-                 height1 = w1.size.y;
-             }
+                b2Transform t = b2Body_GetTransform(col.b);
+                float angleC = t.q.c;
+                float angleS = t.q.s;
 
-             SDL_FRect rect1 = {
-                     t1.p.x * BOX_SCALE - width1 / 2.f,
-                     t1.p.y * BOX_SCALE - height1 / 2.f,
-                     width1, height1
-             };
+                if (dir.up) {
+                    dir.blockedUp = true;
+                    dir.up = false;
+                    ///move pacman slightly to prevent next collision
+                    pos.y += 5.0f / BOX_SCALE;
+                    b2Body_SetTransform(col.b, pos, {angleC, angleS});
+                    if (isGhost)
+                        dir.down = true;
+                }
+                else if (dir.down) {
+                    dir.blockedDown = true;
+                    dir.down = false;
+                    ///move pacman slightly to prevent next collision
+                    pos.y -= 5.0f / BOX_SCALE;
+                    b2Body_SetTransform(col.b, pos, {angleC, angleS});
+                    if (isGhost)
+                        dir.up = true;
+                }
+                else if (dir.left) {
+                    dir.blockedLeft = true;
+                    dir.left = false;
+                    ///move pacman slightly to prevent next collision
+                    pos.x += 5.0f / BOX_SCALE;
+                    b2Body_SetTransform(col.b, pos, {angleC, angleS});
+                    if (isGhost)
+                        dir.right = true;
+                }
+                else if (dir.right) {
+                    dir.blockedRight = true;
+                    dir.right = false;
+                    ///move pacman slightly to prevent next collision
+                    pos.x -= 5.0f / BOX_SCALE;
+                    b2Body_SetTransform(col.b, pos, {angleC, angleS});
+                    if (isGhost)
+                        dir.left = true;
+                }
+            }
 
-             for (id_type id2 = id1 + 1; id2 <= World::maxId().id; ++id2) {
-                 ent_type e2{id2};
-                 if (!World::mask(e2).test(required))
-                     continue;
+            if (sensorIsPlayer && isGhost) {
+                //pacman hit ghost
+                auto& stats = World::getComponent<PlayerStats>(*e1);
+                int lives = stats.lives -1 ;
+                if (lives == 0) {
+                    //GAME-OVER
+                    EndGameSystem();
+                    return;
 
-                 const auto &pos2 = World::getComponent<Position>(e2);
-                 const auto &col2 = World::getComponent<Collider>(e2);
+                }
+                auto& dGhost = World::getComponent<Drawable>(*e);
 
-                 b2Transform t2 = b2Body_GetTransform(col2.b);
-                 float width2 = 16, height2 = 16;
-                 if (World::mask(e2).test(Component<Drawable>::Bit)) {
-                     const auto& d2 = World::getComponent<Drawable>(e2);
-                     width2 = d2.size.x;
-                     height2 = d2.size.y;
-                 } else if (World::mask(e2).test(Component<Wall>::Bit)) {
-                     const auto& w2 = World::getComponent<Wall>(e2);
-                     width2 = w2.size.x;
-                     height2 = w2.size.y;
-                 }
+                createGhost(dGhost.part[0], dGhost.part[1], {100.f*CHARACTER_TEX_SCALE, 120.f*CHARACTER_TEX_SCALE});
+                World::destroyEntity(*e1);
+                World::destroyEntity(*e);
+                b2DestroyBody(sensor);
+                b2DestroyBody(b);
+                createPacMan(lives);
+                std::cout << "Player hit by ghost! Lives left: " << lives << "\n";
 
-                 SDL_FRect rect2 = {
-                         t2.p.x * BOX_SCALE - width2 / 2.f,
-                         t2.p.y * BOX_SCALE - height2 / 2.f,
-                         width2, height2
-                 };
+            }
 
-                 if (!SDL_HasRectIntersectionFloat(&rect1, &rect2))
-                     continue;
+            if (sensorIsPlayer && isPellet) {
+                //pacman ate pellet
+                auto& stats = World::getComponent<PlayerStats>(*e1);
+                const auto& pelletData = World::getComponent<Pellet>(*e);
 
+                if (pelletData.type == ePelletState::Normal) {
+                    stats.score += 10;
+                } else if (pelletData.type == ePelletState::Power) {
+                    stats.score += 50;
+                    // TODO: Set ghosts to vulnerable state (if implemented)
+                }
+                World::destroyEntity(*e);
+                b2DestroyBody(b);
 
-                 ///Check who intersect with who
-                 bool isPlayer1 = World::mask(e1).test(Component<PlayerControlled>::Bit);
-                 bool isPlayer2 = World::mask(e2).test(Component<PlayerControlled>::Bit);
-                 bool isGhost1 = World::mask(e1).test(Component<Ghost>::Bit);
-                 bool isGhost2 = World::mask(e2).test(Component<Ghost>::Bit);
-
-                 /// Player hit ghost - reduce life
-                 if ((isGhost1 && isPlayer2) || (isGhost2 && isPlayer1)) {
-                     ent_type player = isPlayer1 ? e1 : e2;
-
-                     if (World::mask(player).test(Component<PlayerStats>::Bit)) {
-                         auto& stats = World::getComponent<PlayerStats>(player);
-                         stats.lives -= 1;
-                         std::cout << "Player hit by ghost! Lives left: " << stats.lives << "\n";
-                     }
-                 }
-
-                 bool isWall1 = World::mask(e1).test(Component<Wall>::Bit);
-                 bool isWall2 = World::mask(e2).test(Component<Wall>::Bit);
-
-                 /// Handle wall collisions – stop movement or bounce back
-                 if ((isWall1 && (isPlayer2 || isGhost2)) || (isWall2 && (isPlayer1 || isGhost1))) {
-                     ent_type entity = (isWall1 ? e2 : e1);
-                     ent_type wall   = (isWall1 ? e1 : e2);
-
-
-                     /// Stop pacman on collision
-                     if (World::mask(entity).test(Component<Intent>::Bit)) {
-                         auto& dir = World::getComponent<Intent>(entity);
-                         const auto& col = World::getComponent<Collider>(entity);
-                         b2Vec2 pos = b2Body_GetPosition(col.b);
-
-                         if (dir.up) {
-                             dir.blockedUp = true;
-                             dir.up = false;
-                             ///move pacman slightly to prevent next collision
-                             pos.y += 5.0f / BOX_SCALE;
-                             b2Body_SetTransform(col.b, pos, {0.0f, -1.0f});
-                         }
-                         else if (dir.down) {
-                             dir.blockedDown = true;
-                             dir.down = false;
-                             ///move pacman slightly to prevent next collision
-                             pos.y -= 5.0f / BOX_SCALE;
-                             b2Body_SetTransform(col.b, pos, {0.0f, 1.0f});
-                         }
-                         else if (dir.left) {
-                             dir.blockedLeft = true;
-                             dir.left = false;
-                             ///move pacman slightly to prevent next collision
-                             pos.x += 5.0f / BOX_SCALE;
-                             b2Body_SetTransform(col.b, pos, {-1.0f, 0.0f});
-                         }
-                         else if (dir.right) {
-                             std::cout << "Had intersection (RIGHT)\n";
-                             dir.blockedRight = true;
-                             dir.right = false;
-                             ///move pacman slightly to prevent next collision
-                             pos.x -= 5.0f / BOX_SCALE;
-                             b2Body_SetTransform(col.b, pos, {1.0f, 0.0f});
-                         }
-                     }
-
-                     /// Special behavior for ghosts: bounce back
-                     if (World::mask(entity).test(Component<Ghost>::Bit) &&
-                         World::mask(entity).test(Component<Intent>::Bit)) {
-                         auto& dir = World::getComponent<Intent>(entity);
-                         dir.up = !dir.up;
-                         dir.down = !dir.down;
-                         dir.left = !dir.left;
-                         dir.right = !dir.right;
-                     }
-                 }
-
-                 /// Handle pellet collisions - increase score/power up
-                 bool isPellet1 = World::mask(e1).test(Component<Pellet>::Bit);
-                 bool isPellet2 = World::mask(e2).test(Component<Pellet>::Bit);
-
-                 if ((isPlayer1 && isPellet2) || (isPlayer2 && isPellet1)) {
-                     ent_type pellet = isPellet1 ? e1 : e2;
-                     ent_type player = isPlayer1 ? e1 : e2;
-
-                     ///Score handling
-                     if (World::mask(player).test(Component<PlayerStats>::Bit)) {
-                         auto& stats = World::getComponent<PlayerStats>(player);
-                         const auto& pelletData = World::getComponent<Pellet>(pellet);
-
-                         if (pelletData.type == ePelletState::Normal) {
-                             stats.score += 10;
-                         } else if (pelletData.type == ePelletState::Power) {
-                             stats.score += 50;
-                             // TODO: Set ghosts to vulnerable state (if implemented)
-                         }
-                     }
-
-                     World::destroyEntity(pellet);
-                 }
-             }
-         }
-     }
-
-    /**
-     * @brief Updates pellet-related logic such as state changes or consumption.
-     */
-    //TODO - Check if needed and how to use
-    void PacMan::PelletSystem() {
-        Mask required = MaskBuilder()
-            .set<Pellet>()
-            .set<Eatable>()
-            .build();
-        for (id_type id = 0; id <= World::maxId().id; ++id) {
-            ent_type e{id};
-            if (World::mask(e).test(required)) {
-                bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
             }
         }
     }
@@ -503,81 +285,49 @@ namespace pacman
     /**
      * @brief Handles AI and player decision-making logic.
      */
+    void PacMan::AISystem() {
+        Mask required = MaskBuilder()
+        .set<Ghost>()
+        .set<Intent>()
+        .set<Drawable>()
+        .build();
 
-    class AI{
-    public:
-        void update() {
-            for (int i = 0; i < _entities.size(); ++i)
-            {
-                ent_type e = _entities[i];
-                if (!World::mask(e).test(mask))
-                {
-                    _entities[i] = _entities[_entities.size()-1];
-                    _entities.pop();
-                    --i;
-                    continue;
-                }
-                else
-                {
-                    auto& in = World::getComponent<Intent>(e);
-                    auto& dr = World::getComponent<Drawable>(e);
-                    if (dr.frame % 30 == 0) {
-                        in.up = in.down = in.left = in.right = false;
-                        int dir = rand() % 4;
-                        switch (dir) {
-                            case 0: in.up = true; break;
-                            case 1: in.down = true; break;
-                            case 2: in.left = true; break;
-                            case 3: in.right = true; break;
-                        }
+        for (id_type id = 0; id <= World::maxId().id; ++id) {
+            ent_type e{id};
+            if (World::mask(e).test(required)) {
+                auto& in = World::getComponent<Intent>(e);
+                auto& dr = World::getComponent<Drawable>(e);
+                if (dr.frame % 240 == 0) {
+                    in.up = in.down = in.left = in.right = false;
+                    int dir = rand() % 4;
+                    switch (dir) {
+                        case 0: in.up = true; break;
+                        case 1: in.down = true; break;
+                        case 2: in.left = true; break;
+                        case 3: in.right = true; break;
                     }
                 }
             }
         }
-
-        void updateEntities(){
-            for (int i = 0; i < World::sizeAdded(); ++i) {
-                const AddedMask& am = World::getAdded(i);
-
-                if ((!am.prev.test(mask)) && (am.next.test(mask))) {
-                    _entities.push(am.e);
-                }
-            }
-        }
-
-        AI()
-        {
-            mask = MaskBuilder()
-            .set<Ghost>()
-            .set<Intent>()
-            .set<Drawable>()
-            .build();
-
-            for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
-                if (World::mask(e).test(mask)) {
-                    _entities.push(e);
-                }
-            }
-        }
-    private:
-        Bag<ent_type,100> _entities;
-        Mask mask;
-    };
-
+    }
 
     /**
-     * @brief Updates and tracks player scores.
+     * @brief Delete all the entities in the end of the  game.
      */
-    //TODO
-    void PacMan::ScoreSystem() {
+    void PacMan::EndGameSystem() {
+        Mask notRequired = MaskBuilder()
+            .set<Background>()
+            .build();
         Mask required = MaskBuilder()
-            .set<PlayerStats>()
+            .set<Collider>()
             .build();
         for (id_type id = 0; id <= World::maxId().id; ++id) {
             ent_type e{id};
-            if (World::mask(e).test(required)) {
-                bool isGhost = World::mask(e).test(Component<Ghost>::Bit);
-                bool hasPowerUP = World::mask(e).test(Component<Pellet>::Bit);
+            if (! World::mask(e).test(notRequired) && World::mask(e).test(required)) {
+                auto& c = World::getComponent<Collider>(e);
+                World::destroyEntity(e);
+                b2DestroyBody(c.b);
+
             }
         }
     }
@@ -587,20 +337,22 @@ namespace pacman
      * @param pos The starting position of Pac-Man.
      * @return The created Pac-Man entity.
      */
-    void PacMan::createPacMan() {
-        SDL_FPoint p = {WIN_WIDTH/2/BOX_SCALE, WIN_HEIGHT/2/BOX_SCALE}; // TODO change to starting position
 
-        // 1. Create a static body
+    void PacMan::createPacMan(int lives) {
+        SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 237.f*CHARACTER_TEX_SCALE};
+
         b2BodyDef pacmanBodyDef = b2DefaultBodyDef();
         pacmanBodyDef.type = b2_kinematicBody;
         pacmanBodyDef.position = {p.x / BOX_SCALE, p.y / BOX_SCALE};
         b2BodyId pacmanBody = b2CreateBody(boxWorld, &pacmanBodyDef);
 
-        // 2. Define shape
+        //Define shape
         b2ShapeDef pacmanShapeDef = b2DefaultShapeDef();
+        pacmanShapeDef.enableSensorEvents = true;
+        pacmanShapeDef.isSensor = true;
         pacmanShapeDef.density = 1; // Not needed for static, but harmless
 
-        b2Circle pacmanCircle = {0,0,OPEN_PACMAN.w*CHARACTER_TEX_SCALE/BOX_SCALE/2};
+        b2Circle pacmanCircle = {0,0,(OPEN_PACMAN.w*CHARACTER_TEX_SCALE/BOX_SCALE)/2};
         b2CreateCircleShape(pacmanBody, &pacmanShapeDef, &pacmanCircle);
 
         Entity e = Entity::create();
@@ -611,8 +363,9 @@ namespace pacman
          Intent{},
          Input{SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT},
          PlayerControlled{},
-         PlayerStats{0,3}
+         PlayerStats{0,lives}
          );
+        b2Body_SetUserData(pacmanBody, new ent_type{e.entity()});
     }
 
     /**
@@ -625,30 +378,33 @@ namespace pacman
     void PacMan::createGhost(const SDL_FRect& r1,const SDL_FRect& r2, const SDL_FPoint& p) {
         b2BodyDef padBodyDef = b2DefaultBodyDef();
         padBodyDef.type = b2_kinematicBody;
+        //padBodyDef.type = b2_staticBody;
         padBodyDef.position = {p.x / BOX_SCALE, p.y / BOX_SCALE};
         b2BodyId padBody = b2CreateBody(boxWorld, &padBodyDef);
 
         b2ShapeDef padShapeDef = b2DefaultShapeDef();
+        padShapeDef.enableSensorEvents = true;
         padShapeDef.density = 1;
 
-        b2Polygon padBox = b2MakeBox(r1.w*PAD_TEX_SCALE/BOX_SCALE/2, r1.h*PAD_TEX_SCALE/BOX_SCALE/2);
+        b2Polygon padBox = b2MakeBox((r1.w*CHARACTER_TEX_SCALE/BOX_SCALE)/2, (r1.h*CHARACTER_TEX_SCALE/BOX_SCALE)/2);
         b2CreatePolygonShape(padBody, &padShapeDef, &padBox);
 
-        Entity::create().addAll(
+        Entity e = Entity::create();
+        e.addAll(
             Position{{},0},
             Drawable{{r1,r2}, {r1.w*CHARACTER_TEX_SCALE, r1.h*CHARACTER_TEX_SCALE},0},
             Collider{padBody},
             Intent{},
             Ghost{}
         );
+        b2Body_SetUserData(padBody, new ent_type{e.entity()});
     }
 
     /**
      * @brief Creates a pellet entity (normal or power-up).
-     * @param pos The position of the pellet.
+     * @param p The position of the pellet.
      * @return The created pellet entity.
      */
-    //TODO - Check if works and how to add all pellets in the board automatically
     void PacMan::createPellet(SDL_FPoint p) {
         // 1. Create a static body
         b2BodyDef pelletBodyDef = b2DefaultBodyDef();
@@ -658,29 +414,33 @@ namespace pacman
 
         // 2. Define shape
         b2ShapeDef pelletShapeDef = b2DefaultShapeDef();
+        pelletShapeDef.enableSensorEvents = true;
+
         pelletShapeDef.density = 1; // Not needed for static, but harmless
 
         b2Circle pelletCircle = {0,0,PELLET.w*CHARACTER_TEX_SCALE/BOX_SCALE/2};
         b2CreateCircleShape(pelletBody, &pelletShapeDef, &pelletCircle);
 
         // 3. Create and assign components
-        Entity::create().addAll(
+        Entity e = Entity::create();
+        e.addAll(
             Position{{}, 0},
             Drawable{{PELLET,{}}, {PELLET.w * CHARACTER_TEX_SCALE, PELLET.h * CHARACTER_TEX_SCALE}, 0},
             Collider{pelletBody},
             Pellet{ePelletState::Normal}
         );
+        b2Body_SetUserData(pelletBody, new ent_type{e.entity()});
     }
 
     /**
      * @brief Creates a wall entity.
-     * @param pos The position of the wall.
+     * @param p The position of the wall.
      * @return The created wall entity.
      */
-    void PacMan::createWall(SDL_FPoint p)
+    void PacMan::createWall(SDL_FPoint p, float w, float h)
     {
-        const float width = BOARD.w * CHARACTER_TEX_SCALE;
-        const float height = 5.0f;
+        const float width = w;
+        const float height = h;
 
 
         b2BodyDef wallBodyDef = b2DefaultBodyDef();
@@ -690,6 +450,10 @@ namespace pacman
         b2BodyId wallBody = b2CreateBody(boxWorld, &wallBodyDef);
 
         b2ShapeDef shapeDef = b2DefaultShapeDef();
+        shapeDef.enableSensorEvents = true;
+        shapeDef.isSensor = true;
+        shapeDef.density = 1; // Not needed for static, but harmless
+
         b2Polygon box = b2MakeBox(width / 2.0f / BOX_SCALE, height / 2.0f / BOX_SCALE);
         b2ShapeId shape = b2CreatePolygonShape(wallBody, &shapeDef, &box);
 
@@ -699,21 +463,7 @@ namespace pacman
                 Collider{wallBody},
                 Wall{shape, {width, height}}
         );
-    }
-
-    /**
-     * @brief Creates an entity for tracking player score.
-     * @param pos The position of the score display.
-     * @return The created score entity.
-     */
-    //TODO
-    void PacMan::createScore(Position pos) {
-        Entity e = Entity::create();
-        e.addAll(
-            pos,
-            Drawable{},
-            PlayerStats{}
-        );
+        b2Body_SetUserData(wallBody, new ent_type{e.entity()});
     }
 
     /**
@@ -721,12 +471,13 @@ namespace pacman
      */
     void PacMan::createBackground()
     {
-        Entity e = Entity::create();
-        e.addAll(
-                Position{{WIN_WIDTH / 2.f, WIN_HEIGHT / 2.f}, 0},
-                Drawable{{BOARD, {}}, {BOARD.w * CHARACTER_TEX_SCALE, BOARD.h * CHARACTER_TEX_SCALE}, 0}
+        Entity::create().addAll(
+                Position{{(BOARD.w / 2.f) * CHARACTER_TEX_SCALE, (BOARD.h / 2.f)*CHARACTER_TEX_SCALE}, 0},
+                Drawable{{BOARD, {}}, {BOARD.w * CHARACTER_TEX_SCALE, BOARD.h * CHARACTER_TEX_SCALE}, 0},
+                Background{}
         );
     }
+
 
 
     bool PacMan::prepareWindowAndTexture()
@@ -736,7 +487,7 @@ namespace pacman
             return false;
         }
         if (!SDL_CreateWindowAndRenderer(
-            "Pac-Man", BOARD.w*CHARACTER_TEX_SCALE, BOARD.h*CHARACTER_TEX_SCALE, 0, &win, &ren)) {
+            "Pac-Man", BOARD.w*CHARACTER_TEX_SCALE, BOARD.h*CHARACTER_TEX_SCALE + OPEN_PACMAN.h+(15*CHARACTER_TEX_SCALE), 0, &win, &ren)) {
             cout << SDL_GetError() << endl;
             return false;
         }
@@ -755,11 +506,120 @@ namespace pacman
         SDL_DestroySurface(surf);
         return true;
     }
+
     void PacMan::prepareBoxWorld()
     {
         b2WorldDef worldDef = b2DefaultWorldDef();
         worldDef.gravity = {0,0};
         boxWorld = b2CreateWorld(&worldDef);
+    }
+
+    void PacMan::preparePellets()
+    {
+        float space = 8.f;
+
+        for (int i = 0 ; i < 12; ++i) {
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 13.f * CHARACTER_TEX_SCALE});
+        }
+        for (int i = 0 ; i < 12; ++i) {
+            createPellet({ ((space * i) + 125.f) * CHARACTER_TEX_SCALE, 13.f * CHARACTER_TEX_SCALE});
+        }
+
+
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 1 && i <= 4) || (i >= 6 && i <= 10) || (i >= 12 && i <= 13) || (i >= 15 && i <= 19) || (i >= 21 && i <= 24)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 28.f * CHARACTER_TEX_SCALE});
+        }
+
+
+        for (int i = 0 ; i < 26; ++i) {
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 45.f * CHARACTER_TEX_SCALE});
+        }
+
+
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 1 && i <= 4) ||(i >= 6 && i <= 7) || (i >= 9 && i <= 16) || (i >= 18 && i <= 19) || (i >= 21 && i <= 24)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 58.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 0 ; i < 26; ++i) {
+            if (i == 6 || i == 7 ||  i == 12 || i == 13 || i == 19 || i == 18) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 69.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 0 ; i < 26; ++i) {
+            if (i == 12 || i == 13) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 165.f * CHARACTER_TEX_SCALE});
+        }
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 1 && i <= 4) ||(i >= 6 && i <= 10) || (i >= 12 && i <= 13) || (i >= 15 && i <= 19) || (i >= 21 && i <= 24)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 177.f * CHARACTER_TEX_SCALE});
+        }
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 3 && i <= 4) || (i >= 21 && i <= 22)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 189.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 6 && i <= 7) || (i >= 12 && i <= 13) || (i >= 18 && i <= 19)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 213.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 0 ; i < 26; ++i) {
+            if ((i >= 1 && i <= 10) || (i >= 12 && i <= 13) || (i >= 15 && i <= 24)) {
+                continue;
+            }
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 225.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 2 ; i < 26; ++i) {
+            createPellet({ ((space * i) + 13.f) * CHARACTER_TEX_SCALE, 237.f * CHARACTER_TEX_SCALE});
+        }
+
+        for (int i = 0 ; i < 11; ++i) {
+            createPellet({ 53.f * CHARACTER_TEX_SCALE, (77.f+ (space * i)) * CHARACTER_TEX_SCALE});
+
+        }
+        for (int i = 0 ; i < 11; ++i) {
+            createPellet({ 173.f * CHARACTER_TEX_SCALE, (77.f+ (space * i)) * CHARACTER_TEX_SCALE});
+        }
+
+
+
+    }
+
+    void PacMan::prepareWalls()
+    {
+        //upper and lower borders
+        createWall({WIN_WIDTH  / 2.0f, 11.0f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
+        createWall({WIN_WIDTH  / 2.0f, WIN_HEIGHT - 11.f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
+        //side borders
+        createWall({16.0f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
+        createWall({WIN_WIDTH - 12.f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
+
+        createWall({WIN_WIDTH / 2.f, 10.0f},29.f, 65 * CHARACTER_TEX_SCALE);
+
+        createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+
+        createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+
+        createWall({31 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 16 * CHARACTER_TEX_SCALE);
+        createWall({75 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},32 * CHARACTER_TEX_SCALE, 16 * CHARACTER_TEX_SCALE);
+
     }
 
     PacMan::PacMan()
@@ -772,13 +632,14 @@ namespace pacman
         prepareWalls();
 
         createBackground();
-        createPacMan();
-        createWall({WIN_WIDTH  / 2.0f, 10.0f});
-//        createPellet({WIN_HEIGHT/4, WIN_WIDTH/4});
-//        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{WIN_WIDTH/2 + 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-//        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{WIN_WIDTH/2 - 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-//        createGhost(RED_GHOST_UP,RED_GHOST_UP_1,{WIN_WIDTH/2 + 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-//        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{WIN_WIDTH/2 - 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
+        preparePellets();
+
+        createPacMan(3);
+
+        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
     }
 
     PacMan::~PacMan()
@@ -801,29 +662,14 @@ namespace pacman
         auto start = SDL_GetTicks();
         bool quit = false;
 
-        InputSystem is;
-        AI ai;
-
         while (!quit) {
-            //first updateEntities() for all systems
-            is.updateEntities();
-            ai.updateEntities();
-            //then update() for all systems
-            ai.update();
-            is.update();
 
-
-
-
-
-
-            //finally World::step() to clear added() array
-            World::step();
-            //input_system();
+            InputSystem();
+            AISystem();
             MovementSystem();
             box_system();
             CollisionSystem();
-            // score_system();
+            //ScoreSystem();
             RenderSystem();
 
             auto end = SDL_GetTicks();
