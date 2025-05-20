@@ -74,7 +74,7 @@ namespace pacman
 
         for (ent_type e{0}; e.id <= World::maxId().id; ++e.id) {
             if (World::mask(e).test(mask)) {
-                const auto& i = World::getComponent<Intent>(e);
+                auto& i = World::getComponent<Intent>(e);
                 const auto& c = World::getComponent<Collider>(e);
                 bool isPlayer = World::mask(e).test(Component<PlayerControlled>::Bit);
 
@@ -85,12 +85,16 @@ namespace pacman
                 if (isPlayer) {
                     if (i.up) {
                         b2Body_SetTransform(c.b, b2Body_GetPosition(c.b), {0.0f, -1.0f});
+                        i.blockedDown = i.blockedLeft = i.blockedRight = false;
                     }else if (i.down) {
                         b2Body_SetTransform(c.b, b2Body_GetPosition(c.b), {0.0f, 1.0f});
+                        i.blockedUp = i.blockedLeft = i.blockedRight = false;
                     } else if (i.left) {
                         b2Body_SetTransform(c.b, b2Body_GetPosition(c.b), {-1.0f, 0.0f});
+                        i.blockedUp = i.blockedDown = i.blockedRight = false;
                     }else if (i.right) {
                         b2Body_SetTransform(c.b, b2Body_GetPosition(c.b), {1.0f, 0.0f});
+                        i.blockedUp = i.blockedDown = i.blockedLeft = false;
                     }
                 }
             }
@@ -121,11 +125,25 @@ namespace pacman
                 {
                     const auto& k = World::getComponent<Input>(e);
                     auto& in = World::getComponent<Intent>(e);
-                    if (keys[k.up] || keys[k.down] || keys[k.left] || keys[k.right]) {
-                        in.up = keys[k.up];
-                        in.down = keys[k.down];
-                        in.left = keys[k.left];
-                        in.right = keys[k.right];
+                    if (keys[k.up] && !in.blockedUp) {
+                        in.up = true;
+                        in.down = in.left = in.right = false;
+                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                    }
+                    else if (keys[k.down] && !in.blockedDown) {
+                        in.down = true;
+                        in.up = in.left = in.right = false;
+                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                    }
+                    else if (keys[k.left] && !in.blockedLeft) {
+                        in.left = true;
+                        in.up = in.down = in.right = false;
+                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                    }
+                    else if (keys[k.right] && !in.blockedRight) {
+                        in.right = true;
+                        in.up = in.down = in.left = false;
+                        in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
                     }
                 }
             }
@@ -317,9 +335,21 @@ namespace pacman
              const auto& col1 = World::getComponent<Collider>(e1);
 
              b2Transform t1 = b2Body_GetTransform(col1.b);
+             float width1 = 16, height1 = 16;
+             if (World::mask(e1).test(Component<Drawable>::Bit)) {
+                 const auto& d1 = World::getComponent<Drawable>(e1);
+                 width1 = d1.size.x;
+                 height1 = d1.size.y;
+             } else if (World::mask(e1).test(Component<Wall>::Bit)) {
+                 const auto& w1 = World::getComponent<Wall>(e1);
+                 width1 = w1.size.x;
+                 height1 = w1.size.y;
+             }
+
              SDL_FRect rect1 = {
-                     t1.p.x * BOX_SCALE, t1.p.y * BOX_SCALE,
-                     16, 16  // Assuming tile size. Adjust if needed per entity.
+                     t1.p.x * BOX_SCALE - width1 / 2.f,
+                     t1.p.y * BOX_SCALE - height1 / 2.f,
+                     width1, height1
              };
 
              for (id_type id2 = id1 + 1; id2 <= World::maxId().id; ++id2) {
@@ -331,13 +361,26 @@ namespace pacman
                  const auto &col2 = World::getComponent<Collider>(e2);
 
                  b2Transform t2 = b2Body_GetTransform(col2.b);
+                 float width2 = 16, height2 = 16;
+                 if (World::mask(e2).test(Component<Drawable>::Bit)) {
+                     const auto& d2 = World::getComponent<Drawable>(e2);
+                     width2 = d2.size.x;
+                     height2 = d2.size.y;
+                 } else if (World::mask(e2).test(Component<Wall>::Bit)) {
+                     const auto& w2 = World::getComponent<Wall>(e2);
+                     width2 = w2.size.x;
+                     height2 = w2.size.y;
+                 }
+
                  SDL_FRect rect2 = {
-                         t2.p.x * BOX_SCALE, t2.p.y * BOX_SCALE,
-                         16, 16
+                         t2.p.x * BOX_SCALE - width2 / 2.f,
+                         t2.p.y * BOX_SCALE - height2 / 2.f,
+                         width2, height2
                  };
 
                  if (!SDL_HasRectIntersectionFloat(&rect1, &rect2))
                      continue;
+
 
                  ///Check who intersect with who
                  bool isPlayer1 = World::mask(e1).test(Component<PlayerControlled>::Bit);
@@ -362,8 +405,49 @@ namespace pacman
                  /// Handle wall collisions – stop movement or bounce back
                  if ((isWall1 && (isPlayer2 || isGhost2)) || (isWall2 && (isPlayer1 || isGhost1))) {
                      ent_type entity = (isWall1 ? e2 : e1);
+                     ent_type wall   = (isWall1 ? e1 : e2);
 
-                     if (World::mask(entity).test(Component<Ghost>::Bit)) {
+
+                     /// Stop pacman on collision
+                     if (World::mask(entity).test(Component<Intent>::Bit)) {
+                         auto& dir = World::getComponent<Intent>(entity);
+                         const auto& col = World::getComponent<Collider>(entity);
+                         b2Vec2 pos = b2Body_GetPosition(col.b);
+
+                         if (dir.up) {
+                             dir.blockedUp = true;
+                             dir.up = false;
+                             ///move pacman slightly to prevent next collision
+                             pos.y += 5.0f / BOX_SCALE;
+                             b2Body_SetTransform(col.b, pos, {0.0f, -1.0f});
+                         }
+                         else if (dir.down) {
+                             dir.blockedDown = true;
+                             dir.down = false;
+                             ///move pacman slightly to prevent next collision
+                             pos.y -= 5.0f / BOX_SCALE;
+                             b2Body_SetTransform(col.b, pos, {0.0f, 1.0f});
+                         }
+                         else if (dir.left) {
+                             dir.blockedLeft = true;
+                             dir.left = false;
+                             ///move pacman slightly to prevent next collision
+                             pos.x += 5.0f / BOX_SCALE;
+                             b2Body_SetTransform(col.b, pos, {-1.0f, 0.0f});
+                         }
+                         else if (dir.right) {
+                             std::cout << "Had intersection (RIGHT)\n";
+                             dir.blockedRight = true;
+                             dir.right = false;
+                             ///move pacman slightly to prevent next collision
+                             pos.x -= 5.0f / BOX_SCALE;
+                             b2Body_SetTransform(col.b, pos, {1.0f, 0.0f});
+                         }
+                     }
+
+                     /// Special behavior for ghosts: bounce back
+                     if (World::mask(entity).test(Component<Ghost>::Bit) &&
+                         World::mask(entity).test(Component<Intent>::Bit)) {
                          auto& dir = World::getComponent<Intent>(entity);
                          dir.up = !dir.up;
                          dir.down = !dir.down;
@@ -593,16 +677,30 @@ namespace pacman
      * @param pos The position of the wall.
      * @return The created wall entity.
      */
-    //TODO over the Pac-Man.png
-    void PacMan::createWall(SDL_FPoint p) {
+    void PacMan::createWall(SDL_FPoint p)
+    {
+        const float width = BOARD.w * CHARACTER_TEX_SCALE;
+        const float height = 5.0f;
+
+
+        b2BodyDef wallBodyDef = b2DefaultBodyDef();
+        wallBodyDef.type = b2_staticBody;
+        wallBodyDef.position = {p.x / BOX_SCALE, p.y / BOX_SCALE};
+
+        b2BodyId wallBody = b2CreateBody(boxWorld, &wallBodyDef);
+
+        b2ShapeDef shapeDef = b2DefaultShapeDef();
+        b2Polygon box = b2MakeBox(width / 2.0f / BOX_SCALE, height / 2.0f / BOX_SCALE);
+        b2ShapeId shape = b2CreatePolygonShape(wallBody, &shapeDef, &box);
+
         Entity e = Entity::create();
         e.addAll(
-            Position{},
-            Drawable{},
-            Collider{},
-            Wall{}
+                Position{p, 0},
+                Collider{wallBody},
+                Wall{shape, {width, height}}
         );
     }
+
     /**
      * @brief Creates an entity for tracking player score.
      * @param pos The position of the score display.
@@ -615,6 +713,18 @@ namespace pacman
             pos,
             Drawable{},
             PlayerStats{}
+        );
+    }
+
+    /**
+     * @brief Creates an entity for the background.
+     */
+    void PacMan::createBackground()
+    {
+        Entity e = Entity::create();
+        e.addAll(
+                Position{{WIN_WIDTH / 2.f, WIN_HEIGHT / 2.f}, 0},
+                Drawable{{BOARD, {}}, {BOARD.w * CHARACTER_TEX_SCALE, BOARD.h * CHARACTER_TEX_SCALE}, 0}
         );
     }
 
@@ -661,12 +771,14 @@ namespace pacman
         prepareBoxWorld();
         prepareWalls();
 
+        createBackground();
         createPacMan();
-        createPellet({WIN_HEIGHT/4, WIN_WIDTH/4});
-        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{WIN_WIDTH/2 + 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{WIN_WIDTH/2 - 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-        createGhost(RED_GHOST_UP,RED_GHOST_UP_1,{WIN_WIDTH/2 + 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
-        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{WIN_WIDTH/2 - 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
+        createWall({WIN_WIDTH  / 2.0f, 10.0f});
+//        createPellet({WIN_HEIGHT/4, WIN_WIDTH/4});
+//        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{WIN_WIDTH/2 + 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
+//        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{WIN_WIDTH/2 - 14*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
+//        createGhost(RED_GHOST_UP,RED_GHOST_UP_1,{WIN_WIDTH/2 + 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
+//        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{WIN_WIDTH/2 - 30*CHARACTER_TEX_SCALE, WIN_HEIGHT/2});
     }
 
     PacMan::~PacMan()
@@ -707,7 +819,6 @@ namespace pacman
 
             //finally World::step() to clear added() array
             World::step();
-
             //input_system();
             MovementSystem();
             box_system();
