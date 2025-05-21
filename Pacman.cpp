@@ -21,6 +21,47 @@ namespace pacman
     }
 
     /**
+     * @brief Processes user input for entities that are player-controlled.
+     */
+    void PacMan::InputSystem() {
+        Mask required = MaskBuilder()
+                .set<Input>()
+                .set<Intent>()
+                .set<PlayerControlled>()
+                .build();
+
+        SDL_PumpEvents();
+        const bool* keys = SDL_GetKeyboardState(nullptr);
+        for (id_type id = 0; id <= World::maxId().id; ++id) {
+            ent_type e{id};
+            if (World::mask(e).test(required)) {
+                const auto& k = World::getComponent<Input>(e);
+                auto& in = World::getComponent<Intent>(e);
+                if (keys[k.up] && !in.blockedUp) {
+                    in.up = true;
+                    in.down = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.down] && !in.blockedDown) {
+                    in.down = true;
+                    in.up = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.left] && !in.blockedLeft) {
+                    in.left = true;
+                    in.up = in.down = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.right] && !in.blockedRight) {
+                    in.right = true;
+                    in.up = in.down = in.left = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+            }
+        }
+    }
+
+    /**
      * @brief Handles movement logic for entities with Position, Direction, and Speed.
      */
     void PacMan::MovementSystem()
@@ -61,46 +102,6 @@ namespace pacman
         }
     }
 
-    /**
-     * @brief Processes user input for entities that are player-controlled.
-     */
-    void PacMan::InputSystem() {
-        Mask required = MaskBuilder()
-            .set<Input>()
-            .set<Intent>()
-            .set<PlayerControlled>()
-            .build();
-
-        SDL_PumpEvents();
-        const bool* keys = SDL_GetKeyboardState(nullptr);
-        for (id_type id = 0; id <= World::maxId().id; ++id) {
-            ent_type e{id};
-            if (World::mask(e).test(required)) {
-                const auto& k = World::getComponent<Input>(e);
-                auto& in = World::getComponent<Intent>(e);
-                if (keys[k.up] && !in.blockedUp) {
-                    in.up = true;
-                    in.down = in.left = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.down] && !in.blockedDown) {
-                    in.down = true;
-                    in.up = in.left = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.left] && !in.blockedLeft) {
-                    in.left = true;
-                    in.up = in.down = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.right] && !in.blockedRight) {
-                    in.right = true;
-                    in.up = in.down = in.left = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-            }
-        }
-    }
     /**
      * @brief Prepares rendering data for entities with sprites and positions.
      */
@@ -198,6 +199,7 @@ namespace pacman
                 ent_type player = sensorIsPlayer ? *e1 : *e;
                 auto& dir = World::getComponent<Intent>(player);
                 const auto& col = World::getComponent<Collider>(player);
+                auto& dGhost = World::getComponent<Drawable>(player);
                 b2Vec2 pos = b2Body_GetPosition(col.b);
 
                 b2Transform t = b2Body_GetTransform(col.b);
@@ -210,8 +212,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.y += 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.down = true;
+                    if (isGhost) {
+                        dir.right = dGhost.frame % 2 == 0;
+                        dir.left = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.down) {
                     dir.blockedDown = true;
@@ -219,8 +223,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.y -= 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.up = true;
+                    if (isGhost){
+                        dir.right = dGhost.frame % 2 == 0;
+                        dir.left = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.left) {
                     dir.blockedLeft = true;
@@ -228,8 +234,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.x += 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.right = true;
+                    if (isGhost){
+                        dir.up = dGhost.frame % 2 == 0;
+                        dir.down = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.right) {
                     dir.blockedRight = true;
@@ -237,8 +245,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.x -= 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.left = true;
+                    if (isGhost) {
+                        dir.up = dGhost.frame % 2 == 0;
+                        dir.down = dGhost.frame % 2 != 0;
+                    }
                 }
             }
 
@@ -339,7 +349,7 @@ namespace pacman
      */
 
     void PacMan::createPacMan(int lives) {
-        SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 237.f*CHARACTER_TEX_SCALE};
+        SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 240.f*CHARACTER_TEX_SCALE};
 
         b2BodyDef pacmanBodyDef = b2DefaultBodyDef();
         pacmanBodyDef.type = b2_kinematicBody;
@@ -604,19 +614,16 @@ namespace pacman
 
     void PacMan::prepareWalls()
     {
-//        //upper and lower borders
+        //upper and lower borders
         createWall({WIN_WIDTH  / 2.0f, 11.0f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
         createWall({WIN_WIDTH  / 2.0f, WIN_HEIGHT - 11.f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
-//        //side borders
+        //side borders
         createWall({12.0f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
         createWall({WIN_WIDTH - 12.f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
 
         //Top middle
         createWall({WIN_WIDTH / 2.f, 10.0f},29.f, 65 * CHARACTER_TEX_SCALE);
-        //top middle verticle
-        createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
-        //Top middle Horizontal
-        createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+
         //Left box 1
         createWall({31 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
         //Top second left
@@ -645,21 +652,59 @@ namespace pacman
         createWall({76 * CHARACTER_TEX_SCALE, 82 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
         //Left2 hor 2
         createWall({76 * CHARACTER_TEX_SCALE, 179 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+
+        //---------------------------------------------------------
+        //Right box 1
+        createWall({( (BOARD.w - 31) * CHARACTER_TEX_SCALE ), 28 * CHARACTER_TEX_SCALE}, 22 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Top second right
+        createWall({( (BOARD.w - 75) * CHARACTER_TEX_SCALE ), 28 * CHARACTER_TEX_SCALE}, 32 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Right box 2
+        createWall({( (BOARD.w - 31) * CHARACTER_TEX_SCALE ), 57 * CHARACTER_TEX_SCALE}, 22 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right box 3
+        createWall({( (BOARD.w - 14) * CHARACTER_TEX_SCALE ), 94 * CHARACTER_TEX_SCALE}, 60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Right box 4
+        createWall({( (BOARD.w - 14) * CHARACTER_TEX_SCALE ), 142 * CHARACTER_TEX_SCALE}, 60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Right hor 5
+        createWall({( (BOARD.w - 33) * CHARACTER_TEX_SCALE ), 180 * CHARACTER_TEX_SCALE}, 24 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right hor 6
+        createWall({( (BOARD.w - 13) * CHARACTER_TEX_SCALE ), 205 * CHARACTER_TEX_SCALE}, 15 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right 7
+        createWall({( (BOARD.w - 56) * CHARACTER_TEX_SCALE ), 230 * CHARACTER_TEX_SCALE}, 72 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right Vert7
+        createWall({( (BOARD.w - 63) * CHARACTER_TEX_SCALE ), 210 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 14 * CHARACTER_TEX_SCALE);
+        //Right Vert6
+        createWall({( (BOARD.w - 40) * CHARACTER_TEX_SCALE ), 196 * CHARACTER_TEX_SCALE}, 6 * CHARACTER_TEX_SCALE, 20 * CHARACTER_TEX_SCALE);
+        //Right Vert5
+        createWall({( (BOARD.w - 65) * CHARACTER_TEX_SCALE ), 142 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
+        //Right Vert4
+        createWall({( (BOARD.w - 65) * CHARACTER_TEX_SCALE ), 81 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 53 * CHARACTER_TEX_SCALE);
+        //Right2 hor 1
+        createWall({( (BOARD.w - 76) * CHARACTER_TEX_SCALE ), 82 * CHARACTER_TEX_SCALE}, 30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+        //Right2 hor 2
+        createWall({( (BOARD.w - 76) * CHARACTER_TEX_SCALE ), 179 * CHARACTER_TEX_SCALE}, 30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+
+        //---------------------------------------------------------
+        //top middle vertical
+        createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Top middle Horizontal
+        createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+
         //Top middle Horizontal 2
         createWall({WIN_WIDTH / 2.f, 154 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Top middle Vertical 2
+        createWall({WIN_WIDTH / 2.f, 166 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+
         //Top middle Horizontal 3
         createWall({WIN_WIDTH / 2.f, 204 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Top middle Vertical 3
+        createWall({WIN_WIDTH / 2.f, 216 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+
         //bottom of middle box
         createWall({WIN_WIDTH / 2.f, 130 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
         //left of middle box
         createWall({87 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
         //right of middle box
         createWall({136 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
-
-
-
-
-
     }
 
     PacMan::PacMan()
@@ -672,14 +717,14 @@ namespace pacman
         prepareWalls();
 
         createBackground();
-       // preparePellets();
+        preparePellets();
 
         createPacMan(3);
 
-//        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-//        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-//        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
-//        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
     }
 
     PacMan::~PacMan()
@@ -709,7 +754,6 @@ namespace pacman
             MovementSystem();
             box_system();
             CollisionSystem();
-            //ScoreSystem();
             RenderSystem();
 
             auto end = SDL_GetTicks();
