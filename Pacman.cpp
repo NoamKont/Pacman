@@ -14,14 +14,58 @@ using namespace bagel;
 
 namespace pacman
 {
-
+    /**
+     * @brief Checks whether the Pac-Man texture was successfully loaded.
+     * @return True if the texture is valid (not null), false otherwise.
+     */
     bool PacMan::valid()
     {
         return tex != nullptr;
     }
 
     /**
-     * @brief Handles movement logic for entities with Position, Direction, and Speed.
+    * @brief Processes keyboard input for player-controlled entities and sets movement intentions.
+    */
+    void PacMan::InputSystem() {
+        Mask required = MaskBuilder()
+                .set<Input>()
+                .set<Intent>()
+                .set<PlayerControlled>()
+                .build();
+
+        SDL_PumpEvents();
+        const bool* keys = SDL_GetKeyboardState(nullptr);
+        for (id_type id = 0; id <= World::maxId().id; ++id) {
+            ent_type e{id};
+            if (World::mask(e).test(required)) {
+                const auto& k = World::getComponent<Input>(e);
+                auto& in = World::getComponent<Intent>(e);
+                if (keys[k.up] && !in.blockedUp) {
+                    in.up = true;
+                    in.down = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.down] && !in.blockedDown) {
+                    in.down = true;
+                    in.up = in.left = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.left] && !in.blockedLeft) {
+                    in.left = true;
+                    in.up = in.down = in.right = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+                else if (keys[k.right] && !in.blockedRight) {
+                    in.right = true;
+                    in.up = in.down = in.left = false;
+                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief Applies movement to entities based on their current intent and updates Box2D body velocities.
      */
     void PacMan::MovementSystem()
     {
@@ -62,47 +106,7 @@ namespace pacman
     }
 
     /**
-     * @brief Processes user input for entities that are player-controlled.
-     */
-    void PacMan::InputSystem() {
-        Mask required = MaskBuilder()
-            .set<Input>()
-            .set<Intent>()
-            .set<PlayerControlled>()
-            .build();
-
-        SDL_PumpEvents();
-        const bool* keys = SDL_GetKeyboardState(nullptr);
-        for (id_type id = 0; id <= World::maxId().id; ++id) {
-            ent_type e{id};
-            if (World::mask(e).test(required)) {
-                const auto& k = World::getComponent<Input>(e);
-                auto& in = World::getComponent<Intent>(e);
-                if (keys[k.up] && !in.blockedUp) {
-                    in.up = true;
-                    in.down = in.left = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.down] && !in.blockedDown) {
-                    in.down = true;
-                    in.up = in.left = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.left] && !in.blockedLeft) {
-                    in.left = true;
-                    in.up = in.down = in.right = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-                else if (keys[k.right] && !in.blockedRight) {
-                    in.right = true;
-                    in.up = in.down = in.left = false;
-                    in.blockedUp = in.blockedDown = in.blockedLeft = in.blockedRight = false;
-                }
-            }
-        }
-    }
-    /**
-     * @brief Prepares rendering data for entities with sprites and positions.
+     * @brief Renders all drawable entities with textures and positions.
      */
     void PacMan::RenderSystem() {
         static const Mask mask = MaskBuilder()
@@ -148,7 +152,7 @@ namespace pacman
     }
 
     /**
-    * @brief Prepares rendering data for entities with integration of box2d.
+    * @brief Synchronizes Box2D world step and updates entity positions and angles from physics bodies.
     */
     void PacMan::box_system()
     {
@@ -171,8 +175,8 @@ namespace pacman
     }
 
     /**
-     * @brief Detects and handles collisions between entities.
-     */
+  * @brief Handles collision events between Pac-Man, ghosts, pellets, and walls.
+  */
     void PacMan::CollisionSystem()
     {
         const auto se = b2World_GetSensorEvents(boxWorld);
@@ -198,6 +202,7 @@ namespace pacman
                 ent_type player = sensorIsPlayer ? *e1 : *e;
                 auto& dir = World::getComponent<Intent>(player);
                 const auto& col = World::getComponent<Collider>(player);
+                auto& dGhost = World::getComponent<Drawable>(player);
                 b2Vec2 pos = b2Body_GetPosition(col.b);
 
                 b2Transform t = b2Body_GetTransform(col.b);
@@ -210,8 +215,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.y += 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.down = true;
+                    if (isGhost) {
+                        dir.right = dGhost.frame % 2 == 0;
+                        dir.left = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.down) {
                     dir.blockedDown = true;
@@ -219,8 +226,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.y -= 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.up = true;
+                    if (isGhost){
+                        dir.right = dGhost.frame % 2 == 0;
+                        dir.left = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.left) {
                     dir.blockedLeft = true;
@@ -228,8 +237,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.x += 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.right = true;
+                    if (isGhost){
+                        dir.up = dGhost.frame % 2 == 0;
+                        dir.down = dGhost.frame % 2 != 0;
+                    }
                 }
                 else if (dir.right) {
                     dir.blockedRight = true;
@@ -237,8 +248,10 @@ namespace pacman
                     ///move pacman slightly to prevent next collision
                     pos.x -= 5.0f / BOX_SCALE;
                     b2Body_SetTransform(col.b, pos, {angleC, angleS});
-                    if (isGhost)
-                        dir.left = true;
+                    if (isGhost) {
+                        dir.up = dGhost.frame % 2 == 0;
+                        dir.down = dGhost.frame % 2 != 0;
+                    }
                 }
             }
 
@@ -283,8 +296,8 @@ namespace pacman
     }
 
     /**
-     * @brief Handles AI and player decision-making logic.
-     */
+   * @brief Handles ghost AI behavior such as random movement decisions.
+   */
     void PacMan::AISystem() {
         Mask required = MaskBuilder()
         .set<Ghost>()
@@ -312,8 +325,8 @@ namespace pacman
     }
 
     /**
-     * @brief Delete all the entities in the end of the  game.
-     */
+    * @brief Removes all game entities except the background and destroys their physics bodies.
+    */
     void PacMan::EndGameSystem() {
         Mask notRequired = MaskBuilder()
             .set<Background>()
@@ -333,13 +346,11 @@ namespace pacman
     }
 
     /**
-     * @brief Creates the player character (Pac-Man) entity.
-     * @param pos The starting position of Pac-Man.
-     * @return The created Pac-Man entity.
+     * @brief Creates the main player character (Pac-Man).
+     * @param lives Number of lives to initialize Pac-Man with.
      */
-
     void PacMan::createPacMan(int lives) {
-        SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 237.f*CHARACTER_TEX_SCALE};
+        SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 240.f*CHARACTER_TEX_SCALE};
 
         b2BodyDef pacmanBodyDef = b2DefaultBodyDef();
         pacmanBodyDef.type = b2_kinematicBody;
@@ -369,10 +380,10 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a ghost entity.
-     * @param r1
-     * @param p The starting position of the ghost.
-     * @return The created ghost entity.
+     * @brief Creates a ghost entity in the game.
+     * @param r1 First frame of the ghost's sprite.
+     * @param r2 Second frame of the ghost's sprite.
+     * @param p Starting position of the ghost.
      */
 
     void PacMan::createGhost(const SDL_FRect& r1,const SDL_FRect& r2, const SDL_FPoint& p) {
@@ -401,10 +412,9 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a pellet entity (normal or power-up).
-     * @param p The position of the pellet.
-     * @return The created pellet entity.
-     */
+    * @brief Creates a pellet entity (normal or power) at the specified position.
+    * @param p Position of the pellet.
+    */
     void PacMan::createPellet(SDL_FPoint p) {
         // 1. Create a static body
         b2BodyDef pelletBodyDef = b2DefaultBodyDef();
@@ -433,10 +443,11 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a wall entity.
-     * @param p The position of the wall.
-     * @return The created wall entity.
-     */
+    * @brief Creates a wall entity in the game world.
+    * @param p Center position of the wall.
+    * @param w Width of the wall.
+    * @param h Height of the wall.
+    */
     void PacMan::createWall(SDL_FPoint p, float w, float h)
     {
         const float width = w;
@@ -467,8 +478,8 @@ namespace pacman
     }
 
     /**
-     * @brief Creates an entity for the background.
-     */
+    * @brief Creates a static background entity.
+    */
     void PacMan::createBackground()
     {
         Entity::create().addAll(
@@ -479,7 +490,10 @@ namespace pacman
     }
 
 
-
+    /**
+    * @brief Initializes the SDL window, renderer, and loads Pac-Man texture.
+    * @return True on success, false on failure.
+    */
     bool PacMan::prepareWindowAndTexture()
     {
         if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -507,6 +521,9 @@ namespace pacman
         return true;
     }
 
+    /**
+     * @brief Initializes the Box2D world with zero gravity.
+     */
     void PacMan::prepareBoxWorld()
     {
         b2WorldDef worldDef = b2DefaultWorldDef();
@@ -514,6 +531,9 @@ namespace pacman
         boxWorld = b2CreateWorld(&worldDef);
     }
 
+    /**
+    * @brief Places pellets at predefined positions throughout the board.
+    */
     void PacMan::preparePellets()
     {
         float space = 8.f;
@@ -602,21 +622,21 @@ namespace pacman
 
     }
 
+    /**
+    * @brief Creates all wall entities for the maze layout, including borders and inner structures.
+    */
     void PacMan::prepareWalls()
     {
-//        //upper and lower borders
+        //upper and lower borders
         createWall({WIN_WIDTH  / 2.0f, 11.0f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
         createWall({WIN_WIDTH  / 2.0f, WIN_HEIGHT - 11.f},BOARD.w * CHARACTER_TEX_SCALE,5.f);
-//        //side borders
+        //side borders
         createWall({12.0f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
         createWall({WIN_WIDTH - 12.f, WIN_HEIGHT / 2.0f},5.f, BOARD.h * CHARACTER_TEX_SCALE);
 
         //Top middle
         createWall({WIN_WIDTH / 2.f, 10.0f},29.f, 65 * CHARACTER_TEX_SCALE);
-        //top middle verticle
-        createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
-        //Top middle Horizontal
-        createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+
         //Left box 1
         createWall({31 * CHARACTER_TEX_SCALE, 28 * CHARACTER_TEX_SCALE},22 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
         //Top second left
@@ -645,23 +665,63 @@ namespace pacman
         createWall({76 * CHARACTER_TEX_SCALE, 82 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
         //Left2 hor 2
         createWall({76 * CHARACTER_TEX_SCALE, 179 * CHARACTER_TEX_SCALE},30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+
+        //---------------------------------------------------------
+        //Right box 1
+        createWall({( (BOARD.w - 31) * CHARACTER_TEX_SCALE ), 28 * CHARACTER_TEX_SCALE}, 22 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Top second right
+        createWall({( (BOARD.w - 75) * CHARACTER_TEX_SCALE ), 28 * CHARACTER_TEX_SCALE}, 32 * CHARACTER_TEX_SCALE, 15 * CHARACTER_TEX_SCALE);
+        //Right box 2
+        createWall({( (BOARD.w - 31) * CHARACTER_TEX_SCALE ), 57 * CHARACTER_TEX_SCALE}, 22 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right box 3
+        createWall({( (BOARD.w - 14) * CHARACTER_TEX_SCALE ), 94 * CHARACTER_TEX_SCALE}, 60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Right box 4
+        createWall({( (BOARD.w - 14) * CHARACTER_TEX_SCALE ), 142 * CHARACTER_TEX_SCALE}, 60 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Right hor 5
+        createWall({( (BOARD.w - 33) * CHARACTER_TEX_SCALE ), 180 * CHARACTER_TEX_SCALE}, 24 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right hor 6
+        createWall({( (BOARD.w - 13) * CHARACTER_TEX_SCALE ), 205 * CHARACTER_TEX_SCALE}, 15 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right 7
+        createWall({( (BOARD.w - 56) * CHARACTER_TEX_SCALE ), 230 * CHARACTER_TEX_SCALE}, 72 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Right Vert7
+        createWall({( (BOARD.w - 63) * CHARACTER_TEX_SCALE ), 210 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 14 * CHARACTER_TEX_SCALE);
+        //Right Vert6
+        createWall({( (BOARD.w - 40) * CHARACTER_TEX_SCALE ), 196 * CHARACTER_TEX_SCALE}, 6 * CHARACTER_TEX_SCALE, 20 * CHARACTER_TEX_SCALE);
+        //Right Vert5
+        createWall({( (BOARD.w - 65) * CHARACTER_TEX_SCALE ), 142 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
+        //Right Vert4
+        createWall({( (BOARD.w - 65) * CHARACTER_TEX_SCALE ), 81 * CHARACTER_TEX_SCALE}, 7 * CHARACTER_TEX_SCALE, 53 * CHARACTER_TEX_SCALE);
+        //Right2 hor 1
+        createWall({( (BOARD.w - 76) * CHARACTER_TEX_SCALE ), 82 * CHARACTER_TEX_SCALE}, 30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+        //Right2 hor 2
+        createWall({( (BOARD.w - 76) * CHARACTER_TEX_SCALE ), 179 * CHARACTER_TEX_SCALE}, 30 * CHARACTER_TEX_SCALE, 6 * CHARACTER_TEX_SCALE);
+
+        //---------------------------------------------------------
+        //top middle vertical
+        createWall({WIN_WIDTH / 2.f, 69 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+        //Top middle Horizontal
+        createWall({WIN_WIDTH / 2.f, 57 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 8 * CHARACTER_TEX_SCALE);
+
         //Top middle Horizontal 2
         createWall({WIN_WIDTH / 2.f, 154 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Top middle Vertical 2
+        createWall({WIN_WIDTH / 2.f, 166 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+
         //Top middle Horizontal 3
         createWall({WIN_WIDTH / 2.f, 204 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
+        //Top middle Vertical 3
+        createWall({WIN_WIDTH / 2.f, 216 * CHARACTER_TEX_SCALE},8 * CHARACTER_TEX_SCALE, 32 * CHARACTER_TEX_SCALE);
+
         //bottom of middle box
         createWall({WIN_WIDTH / 2.f, 130 * CHARACTER_TEX_SCALE},56 * CHARACTER_TEX_SCALE, 6.5 * CHARACTER_TEX_SCALE);
         //left of middle box
         createWall({87 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
         //right of middle box
         createWall({136 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
-
-
-
-
-
     }
-
+    /**
+    * @brief Constructs the PacMan game instance, initializing systems, walls, pellets, and entities.
+    */
     PacMan::PacMan()
     {
         if (!prepareWindowAndTexture())
@@ -672,16 +732,18 @@ namespace pacman
         prepareWalls();
 
         createBackground();
-       // preparePellets();
+        preparePellets();
 
         createPacMan(3);
 
-//        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-//        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
-//        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
-//        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+        createGhost(BLUE_GHOST_DDOWN,BLUE_GHOST_DOWN_1,{100 * CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(PINK_GHOST_LEFT,PINK_GHOST_LEFT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, 120.f * CHARACTER_TEX_SCALE});
+        createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
+        createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
     }
-
+    /**
+    * @brief Cleans up and destroys SDL and Box2D resources.
+    */
     PacMan::~PacMan()
     {
         if (b2World_IsValid(boxWorld))
@@ -695,7 +757,9 @@ namespace pacman
 
         SDL_Quit();
     }
-
+    /**
+    * @brief Main game loop that processes input, updates logic, renders, and handles events.
+    */
     void PacMan::run()
     {
         SDL_SetRenderDrawColor(ren, 0,0,0,255);
@@ -709,7 +773,6 @@ namespace pacman
             MovementSystem();
             box_system();
             CollisionSystem();
-            //ScoreSystem();
             RenderSystem();
 
             auto end = SDL_GetTicks();
