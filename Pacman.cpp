@@ -14,15 +14,18 @@ using namespace bagel;
 
 namespace pacman
 {
-
+    /**
+     * @brief Checks whether the Pac-Man texture was successfully loaded.
+     * @return True if the texture is valid (not null), false otherwise.
+     */
     bool PacMan::valid()
     {
         return tex != nullptr;
     }
 
     /**
-     * @brief Processes user input for entities that are player-controlled.
-     */
+    * @brief Processes keyboard input for player-controlled entities and sets movement intentions.
+    */
     void PacMan::InputSystem() {
         Mask required = MaskBuilder()
                 .set<Input>()
@@ -62,7 +65,7 @@ namespace pacman
     }
 
     /**
-     * @brief Handles movement logic for entities with Position, Direction, and Speed.
+     * @brief Applies movement to entities based on their current intent and updates Box2D body velocities.
      */
     void PacMan::MovementSystem()
     {
@@ -103,7 +106,7 @@ namespace pacman
     }
 
     /**
-     * @brief Prepares rendering data for entities with sprites and positions.
+     * @brief Renders all drawable entities with textures and positions.
      */
     void PacMan::RenderSystem() {
         static const Mask mask = MaskBuilder()
@@ -149,7 +152,7 @@ namespace pacman
     }
 
     /**
-    * @brief Prepares rendering data for entities with integration of box2d.
+    * @brief Synchronizes Box2D world step and updates entity positions and angles from physics bodies.
     */
     void PacMan::box_system()
     {
@@ -172,8 +175,8 @@ namespace pacman
     }
 
     /**
-     * @brief Detects and handles collisions between entities.
-     */
+  * @brief Handles collision events between Pac-Man, ghosts, pellets, and walls.
+  */
     void PacMan::CollisionSystem()
     {
         const auto se = b2World_GetSensorEvents(boxWorld);
@@ -293,8 +296,8 @@ namespace pacman
     }
 
     /**
-     * @brief Handles AI and player decision-making logic.
-     */
+   * @brief Handles ghost AI behavior such as random movement decisions.
+   */
     void PacMan::AISystem() {
         Mask required = MaskBuilder()
         .set<Ghost>()
@@ -322,8 +325,8 @@ namespace pacman
     }
 
     /**
-     * @brief Delete all the entities in the end of the  game.
-     */
+    * @brief Removes all game entities except the background and destroys their physics bodies.
+    */
     void PacMan::EndGameSystem() {
         Mask notRequired = MaskBuilder()
             .set<Background>()
@@ -343,11 +346,9 @@ namespace pacman
     }
 
     /**
-     * @brief Creates the player character (Pac-Man) entity.
-     * @param pos The starting position of Pac-Man.
-     * @return The created Pac-Man entity.
+     * @brief Creates the main player character (Pac-Man).
+     * @param lives Number of lives to initialize Pac-Man with.
      */
-
     void PacMan::createPacMan(int lives) {
         SDL_FPoint p = {13.f*CHARACTER_TEX_SCALE, 240.f*CHARACTER_TEX_SCALE};
 
@@ -379,10 +380,10 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a ghost entity.
-     * @param r1
-     * @param p The starting position of the ghost.
-     * @return The created ghost entity.
+     * @brief Creates a ghost entity in the game.
+     * @param r1 First frame of the ghost's sprite.
+     * @param r2 Second frame of the ghost's sprite.
+     * @param p Starting position of the ghost.
      */
 
     void PacMan::createGhost(const SDL_FRect& r1,const SDL_FRect& r2, const SDL_FPoint& p) {
@@ -411,10 +412,9 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a pellet entity (normal or power-up).
-     * @param p The position of the pellet.
-     * @return The created pellet entity.
-     */
+    * @brief Creates a pellet entity (normal or power) at the specified position.
+    * @param p Position of the pellet.
+    */
     void PacMan::createPellet(SDL_FPoint p) {
         // 1. Create a static body
         b2BodyDef pelletBodyDef = b2DefaultBodyDef();
@@ -443,10 +443,11 @@ namespace pacman
     }
 
     /**
-     * @brief Creates a wall entity.
-     * @param p The position of the wall.
-     * @return The created wall entity.
-     */
+    * @brief Creates a wall entity in the game world.
+    * @param p Center position of the wall.
+    * @param w Width of the wall.
+    * @param h Height of the wall.
+    */
     void PacMan::createWall(SDL_FPoint p, float w, float h)
     {
         const float width = w;
@@ -477,8 +478,8 @@ namespace pacman
     }
 
     /**
-     * @brief Creates an entity for the background.
-     */
+    * @brief Creates a static background entity.
+    */
     void PacMan::createBackground()
     {
         Entity::create().addAll(
@@ -489,7 +490,10 @@ namespace pacman
     }
 
 
-
+    /**
+    * @brief Initializes the SDL window, renderer, and loads Pac-Man texture.
+    * @return True on success, false on failure.
+    */
     bool PacMan::prepareWindowAndTexture()
     {
         if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -517,6 +521,9 @@ namespace pacman
         return true;
     }
 
+    /**
+     * @brief Initializes the Box2D world with zero gravity.
+     */
     void PacMan::prepareBoxWorld()
     {
         b2WorldDef worldDef = b2DefaultWorldDef();
@@ -524,6 +531,9 @@ namespace pacman
         boxWorld = b2CreateWorld(&worldDef);
     }
 
+    /**
+    * @brief Places pellets at predefined positions throughout the board.
+    */
     void PacMan::preparePellets()
     {
         float space = 8.f;
@@ -612,6 +622,9 @@ namespace pacman
 
     }
 
+    /**
+    * @brief Creates all wall entities for the maze layout, including borders and inner structures.
+    */
     void PacMan::prepareWalls()
     {
         //upper and lower borders
@@ -706,7 +719,9 @@ namespace pacman
         //right of middle box
         createWall({136 * CHARACTER_TEX_SCALE, 118 * CHARACTER_TEX_SCALE},7 * CHARACTER_TEX_SCALE, 30 * CHARACTER_TEX_SCALE);
     }
-
+    /**
+    * @brief Constructs the PacMan game instance, initializing systems, walls, pellets, and entities.
+    */
     PacMan::PacMan()
     {
         if (!prepareWindowAndTexture())
@@ -726,7 +741,9 @@ namespace pacman
         createGhost(RED_GHOST_UP,RED_GHOST_UP_1, {100 * CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
         createGhost(ORANGE_GHOST_RIGHT,ORANGE_GHOST_RIGHT_1,{(110 + PINK_GHOST_DDOWN.w)*CHARACTER_TEX_SCALE, (120.f - (RED_GHOST_DDOWN.h + 15)) * CHARACTER_TEX_SCALE});
     }
-
+    /**
+    * @brief Cleans up and destroys SDL and Box2D resources.
+    */
     PacMan::~PacMan()
     {
         if (b2World_IsValid(boxWorld))
@@ -740,7 +757,9 @@ namespace pacman
 
         SDL_Quit();
     }
-
+    /**
+    * @brief Main game loop that processes input, updates logic, renders, and handles events.
+    */
     void PacMan::run()
     {
         SDL_SetRenderDrawColor(ren, 0,0,0,255);
